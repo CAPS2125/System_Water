@@ -29,8 +29,6 @@ def login():
 
     username = st.text_input("Usuario")
     password = st.text_input("Contraseña", type="password")
-    databaseurl = st.subheader(st.secrets["databaseurl"])
-    databaseurlstr = st.subheader(str(st.secrets["databaseurl"]))
     
     if st.button("Ingresar"):
         conn = psycopg2.connect(str(st.secrets["databaseurl"]))
