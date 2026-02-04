@@ -1,8 +1,11 @@
-import os
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
+import streamlit as st
 
-DATABASE_URL = os.environ["DATABASE_URL"]
+def get_engine():
+    return create_engine(st.secrets["DATABASE_URL"])
 
-engine = create_engine(DATABASE_URL, pool_pre_ping=True)
-SessionLocal = sessionmaker(bind=engine)
+def get_db():
+    engine = get_engine()
+    SessionLocal = sessionmaker(bind=engine)
+    return SessionLocal()
