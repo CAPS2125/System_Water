@@ -226,8 +226,8 @@ st.subheader("💰 Registrar pago")
 if activos:
     servicio_seleccionado = st.selectbox(
         "Selecciona un servicio",
-        activos,
-        format_func=lambda s: f"{s.cliente.nombre_completo} | {s.nombre_servicio}"
+        servicios,
+        format_func=lambda s: f"{s['clientes']['nombre_completo']} | {s['nombre_servicio']}"
     )
 
     with st.form("form_pago_global"):
