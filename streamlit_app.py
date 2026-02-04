@@ -1,244 +1,103 @@
 import streamlit as st
-import pandas as pd
-from datetime import date
-from sqlalchemy import create_engine, text
-from sqlalchemy.orm import sessionmaker
-import psycopg2
 
 # =========================
-# CONFIGURACIÓN DE BASE DE DATOS (Supabase)
-# =========================
-@st.cache_resource
-def get_engine():
-    url = st.secrets["databaseurl"]
-
-    # Forzar psycopg2 (recomendado)
-    if url.startswith("postgresql://"):
-        url = url.replace(
-            "postgresql://",
-            "postgresql+psycopg2://",
-            1
-        )
-
-    return create_engine(
-        url,
-        pool_pre_ping=True,   # evita conexiones muertas
-        pool_size=5,
-        max_overflow=10
-    )
-
-engine = get_engine()
-SessionLocal = sessionmaker(
-    bind=engine,
-    autocommit=False,
-    autoflush=False
-)
-
-def get_db():
-    return SessionLocal()
-
-# Inicializamos la sesión de base de datos
-db = get_db()
-
-# NOTA: Asegúrate de que las clases Cliente, Servicio y Pago 
-# estén definidas arriba o importadas de models.py
-from models import Cliente, Servicio, Pago
-
-# =========================
-# CONFIG STREAMLIT
+# CONFIG GENERAL
 # =========================
 st.set_page_config(
-    page_title="Control de Servicios",
-    page_icon="📊",
+    page_title="System Water – Demo UI",
     layout="wide"
 )
 
 # =========================
-# AUTH
+# SIDEBAR
 # =========================
-if "logged_in" not in st.session_state:
-    st.session_state["logged_in"] = False
+with st.sidebar:
+    st.title("🌊 System Water")
+    st.caption("Demo UI · Sin BD · Sin Login")
 
-def login():
-    st.title("🔐 Inicio de sesión")
+    st.divider()
 
-    username = st.text_input("Usuario")
-    password = st.text_input("Contraseña", type="password")
-    
-    if st.button("Ingresar"):
-        try:
-            # Usamos psycopg2 para la validación de contraseña con la extensión pgcrypto de Supabase
-            conn = psycopg2.connect(st.secrets["databaseurl"])
-            cur = conn.cursor()
-
-            cur.execute(
-                """
-                SELECT id FROM usuarios 
-                WHERE username = %s 
-                AND password_hash = crypt(%s, password_hash)
-                AND activo = TRUE
-                """,
-                (username, password)
-            )
-
-            user = cur.fetchone()
-            cur.close()
-            conn.close()
-
-            if user:
-                st.session_state["logged_in"] = True
-                st.session_state["user_id"] = user[0]
-                st.rerun()
-            else:
-                st.error("Usuario o contraseña incorrectos")
-        except Exception as e:
-            st.error(f"Error de conexión: {e}")
-
-if not st.session_state["logged_in"]:
-    login()
-    st.stop()
+    menu = st.radio(
+        "Navegación",
+        ["Dashboard", "Registrar dato", "Historial", "Configuración"]
+    )
 
 # =========================
-# HELPERS
+# HEADER
 # =========================
-def limpiar(txt):
-    return txt.strip() if txt else None
+st.title("📊 System Water")
+st.caption("Interfaz visual · datos simulados")
 
-def calcular_estado(servicio):
-    if servicio.estado == "Suspendido":
-        return "Suspendido"
-    if servicio.proximo_pago and date.today() > servicio.proximo_pago:
-        return "Vencido"
-    return "Vigente"
+st.divider()
 
 # =========================
-# ➕ ALTA CLIENTE + SERVICIO
+# DASHBOARD
 # =========================
-st.title("📊 Control de Clientes y Servicios")
-st.subheader("➕ Registrar cliente y servicio")
+if menu == "Dashboard":
+    st.subheader("📈 Dashboard")
 
-with st.form("alta_cliente"):
-    col1, col2 = st.columns(2)
+    col1, col2, col3 = st.columns(3)
 
-    with col1:
-        nombre = st.text_input("Nombre completo")
-        telefono = st.text_input("Teléfono")
-        correo = st.text_input("Correo")
-        direccion = st.text_input("Dirección")
+    col1.metric("Registros", "128")
+    col2.metric("Última medición", "7.2 pH")
+    col3.metric("Estado", "Óptimo")
 
-    with col2:
-        servicio_nombre = st.text_input("Servicio")
-        tipo_servicio = st.selectbox("Tipo", ["FIJO", "MEDIDO"])
-        tarifa = st.number_input("Tarifa", min_value=0.0)
-        lectura = st.number_input("Lectura inicial", min_value=0)
+    st.divider()
 
-    col3, col4 = st.columns(2)
-    with col3:
-        ultimo_pago = st.date_input("Último pago", value=None)
-    with col4:
-        proximo_pago = st.date_input("Próximo pago", value=None)
-
-    guardar = st.form_submit_button("💾 Guardar")
-
-    if guardar and nombre:
-        cliente = Cliente(
-            nombre_completo=limpiar(nombre),
-            telefono=limpiar(telefono),
-            correo=limpiar(correo),
-            direccion=limpiar(direccion)
-        )
-        db.add(cliente)
-        db.commit()
-        db.refresh(cliente)
-
-        servicio = Servicio(
-            cliente_id=cliente.id,
-            nombre_servicio=limpiar(servicio_nombre),
-            tipo_servicio=tipo_servicio,
-            tarifa=tarifa,
-            lectura_anterior=lectura,
-            ultimo_pago=ultimo_pago,
-            proximo_pago=proximo_pago,
-            estado="Vigente"
-        )
-        servicio.estado = calcular_estado(servicio)
-
-        db.add(servicio)
-        db.commit()
-
-        st.success("Cliente y servicio guardados")
+    st.info("Aquí irá el resumen general del sistema.")
 
 # =========================
-# 📋 SERVICIOS ACTIVOS
+# REGISTRAR DATO
+# =========================
+elif menu == "Registrar dato":
+    st.subheader("📝 Registrar medición")
+
+    with st.form("form_registro"):
+        col1, col2 = st.columns(2)
+
+        with col1:
+            ph = st.number_input("pH", min_value=0.0, max_value=14.0, step=0.1)
+            temperatura = st.number_input("Temperatura (°C)", step=0.1)
+
+        with col2:
+            conductividad = st.number_input("Conductividad", step=0.1)
+            oxigeno = st.number_input("Oxígeno disuelto", step=0.1)
+
+        submitted = st.form_submit_button("Guardar (simulado)")
+
+        if submitted:
+            st.success("✔ Medición enviada (no se guardó nada)")
+
+# =========================
+# HISTORIAL
+# =========================
+elif menu == "Historial":
+    st.subheader("📚 Historial de mediciones")
+
+    st.warning("Datos simulados")
+
+    fake_data = [
+        {"Fecha": "2026-02-01", "pH": 7.1, "Temp": 22.3},
+        {"Fecha": "2026-01-31", "pH": 7.3, "Temp": 21.9},
+        {"Fecha": "2026-01-30", "pH": 7.0, "Temp": 22.1},
+    ]
+
+    st.table(fake_data)
+
+# =========================
+# CONFIGURACIÓN
+# =========================
+elif menu == "Configuración":
+    st.subheader("⚙ Configuración")
+
+    st.checkbox("Notificaciones activas", value=True)
+    st.selectbox("Unidad de temperatura", ["Celsius", "Fahrenheit"])
+    st.button("Guardar cambios (fake)")
+
+    st.info("Configuración visual solamente.")
+
+# =========================
+# FOOTER
 # =========================
 st.divider()
-st.subheader("✅ Servicios Activos")
-
-servicios = db.query(Servicio).all()
-
-activos = []
-suspendidos = []
-
-for s in servicios:
-    s.estado = calcular_estado(s)
-    db.commit()
-    if s.estado == "Suspendido":
-        suspendidos.append(s)
-    else:
-        activos.append(s)
-
-if activos:
-    for s in activos:
-        with st.expander(f"👤 {s.cliente.nombre_completo} | {s.nombre_servicio}"):
-            st.write(f"📞 {s.cliente.telefono}")
-            st.write(f"📍 {s.cliente.direccion}")
-            st.write(f"💲 Adeudo: ${s.adeudo}")
-            st.info(f"Estado: {s.estado}")
-
-            # ---- PAGO
-            with st.expander("💰 Registrar pago"):
-                with st.form(f"pago_{s.id}"):
-                    monto = st.number_input("Cantidad a pagar", min_value=0.0)
-                    meses = st.number_input("Meses", min_value=1, step=1)
-                    metodo = st.selectbox("Método", ["EFECTIVO", "TARJETA", "TRANSFERENCIA"])
-                    pagar = st.form_submit_button("Aceptar")
-
-                if pagar:
-                    pago = Pago(
-                        servicio_id=s.id,
-                        fecha_pago=date.today(),
-                        monto=monto,
-                        meses_pagados=meses,
-                        metodo_pago=metodo
-                    )
-                    s.adeudo = max(0, s.adeudo - monto)
-                    s.ultimo_pago = date.today()
-                    db.add(pago)
-                    db.commit()
-                    st.success("Pago registrado")
-                    st.rerun()
-
-            if st.button("⛔ Suspender servicio", key=f"susp_{s.id}"):
-                s.estado = "Suspendido"
-                db.commit()
-                st.warning("Servicio suspendido")
-                st.rerun()
-else:
-    st.info("No hay servicios activos")
-
-# =========================
-# 🚫 SERVICIOS SUSPENDIDOS
-# =========================
-st.divider()
-st.subheader("🚫 Servicios Suspendidos")
-
-if suspendidos:
-    for s in suspendidos:
-        with st.expander(f"⛔ {s.cliente.nombre_completo} | {s.nombre_servicio}"):
-            if st.button("▶️ Reactivar", key=f"react_{s.id}"):
-                s.estado = "Vigente"
-                db.commit()
-                st.success("Servicio reactivado")
-                st.rerun()
-else:
-    st.info("No hay servicios suspendidos")
+st.caption("Demo UI · Streamlit · Sin backend")
