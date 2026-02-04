@@ -1,17 +1,51 @@
 import streamlit as st
+from supabase import create_client
 from datetime import date
+from dateutil.relativedelta import relativedelta
 
 # =========================
-# INIT SESSION STATE
+# CONFIG
 # =========================
-if "clientes" not in st.session_state:
-    st.session_state.clientes = []
+st.set_page_config(
+    page_title="Control de Clientes y Servicios",
+    layout="wide"
+)
 
-if "servicios" not in st.session_state:
-    st.session_state.servicios = []
+# =========================
+# SUPABASE CLIENT
+# =========================
+supabase = create_client(
+    st.secrets["supabase_url"],
+    st.secrets["supabase_anon_key"]
+)
 
-if "pagos" not in st.session_state:
-    st.session_state.pagos = []
+# =========================
+# LOGIN MOCK
+# =========================
+def login():
+    st.title("🔐 Iniciar sesión")
+
+    with st.form("login"):
+        email = st.text_input("Correo")
+        password = st.text_input("Contraseña", type="password")
+        submit = st.form_submit_button("Entrar")
+
+    if submit:
+        if (
+            email == st.secrets["login_email"]
+            and password == st.secrets["login_password"]
+        ):
+            st.session_state["auth"] = True
+            st.rerun()
+        else:
+            st.error("Credenciales incorrectas")
+
+if "auth" not in st.session_state:
+    st.session_state["auth"] = False
+
+if not st.session_state["auth"]:
+    login()
+    st.stop()
 
 # =========================
 # HELPERS
@@ -22,50 +56,18 @@ def limpiar(txt):
 def calcular_estado(servicio):
     if servicio["estado"] == "Suspendido":
         return "Suspendido"
-    if servicio["proximo_pago"] and date.today() > servicio["proximo_pago"]:
+    if servicio["proximo_pago"] and date.today() > date.fromisoformat(servicio["proximo_pago"]):
         return "Vencido"
     return "Vigente"
 
-def next_id(lista):
-    return len(lista) + 1
-
 # =========================
-# LOGIN MOCK
+# HEADER
 # =========================
-def login_mock():
-    if "logged_in" not in st.session_state:
-        st.session_state.logged_in = False
-
-    if st.session_state.logged_in:
-        return True
-
-    st.title("🔐 Inicio de Sesión")
-
-    with st.form("login_form"):
-        email = st.text_input("Correo")
-        password = st.text_input("Contraseña", type="password")
-        entrar = st.form_submit_button("Entrar")
-
-    if entrar:
-        if (
-            email == st.secrets["login_email"]
-            and password == st.secrets["login_password"]
-        ):
-            st.session_state.logged_in = True
-            st.success("Acceso concedido")
-            st.rerun()
-        else:
-            st.error("Credenciales incorrectas")
-
-    return False
-
-if not login_mock():
-    st.stop()
+st.title("📊 Control de Clientes y Servicios")
 
 # =========================
 # ➕ ALTA CLIENTE + SERVICIO
 # =========================
-st.title("📊 Control de Clientes y Servicios")
 st.subheader("➕ Registrar cliente y servicio")
 
 with st.form("alta_cliente"):
@@ -92,111 +94,124 @@ with st.form("alta_cliente"):
     guardar = st.form_submit_button("💾 Guardar")
 
     if guardar and nombre:
-        cliente_id = next_id(st.session_state.clientes)
-
-        cliente = {
-            "id": cliente_id,
+        cliente = supabase.table("clientes").insert({
             "nombre_completo": limpiar(nombre),
             "telefono": limpiar(telefono),
             "correo": limpiar(correo),
-            "direccion": limpiar(direccion),
-        }
-        st.session_state.clientes.append(cliente)
+            "direccion": limpiar(direccion)
+        }).execute()
+
+        cliente_id = cliente.data[0]["id"]
 
         servicio = {
-            "id": next_id(st.session_state.servicios),
             "cliente_id": cliente_id,
             "nombre_servicio": limpiar(servicio_nombre),
             "tipo_servicio": tipo_servicio,
             "tarifa": tarifa,
             "lectura_anterior": lectura,
-            "ultimo_pago": ultimo_pago,
-            "proximo_pago": proximo_pago,
-            "adeudo": tarifa,
-            "estado": "Vigente",
+            "ultimo_pago": ultimo_pago.isoformat() if ultimo_pago else None,
+            "proximo_pago": proximo_pago.isoformat() if proximo_pago else None,
+            "adeudo": 0,
+            "estado": "Vigente"
         }
+
         servicio["estado"] = calcular_estado(servicio)
 
-        st.session_state.servicios.append(servicio)
+        supabase.table("servicios").insert(servicio).execute()
 
-        st.success("Cliente y servicio guardados (mock)")
+        st.success("Cliente y servicio registrados")
         st.rerun()
 
 # =========================
-# 📋 SERVICIOS ACTIVOS
+# 📋 SERVICIOS
 # =========================
 st.divider()
-st.subheader("✅ Servicios Activos")
+
+servicios = supabase.table("servicios") \
+    .select("*, clientes(*)") \
+    .execute().data
 
 activos = []
 suspendidos = []
 
-for s in st.session_state.servicios:
+for s in servicios:
     s["estado"] = calcular_estado(s)
+    supabase.table("servicios").update({
+        "estado": s["estado"]
+    }).eq("id", s["id"]).execute()
+
     if s["estado"] == "Suspendido":
         suspendidos.append(s)
     else:
         activos.append(s)
 
-def get_cliente(cliente_id):
-    return next(c for c in st.session_state.clientes if c["id"] == cliente_id)
+# =========================
+# ✅ ACTIVOS
+# =========================
+st.subheader("✅ Servicios Activos")
 
 if activos:
     for s in activos:
-        cliente = get_cliente(s["cliente_id"])
-
-        with st.expander(f"👤 {cliente['nombre_completo']} | {s['nombre_servicio']}"):
-            st.write(f"📞 {cliente['telefono']}")
-            st.write(f"📍 {cliente['direccion']}")
+        with st.expander(f"👤 {s['clientes']['nombre_completo']} | {s['nombre_servicio']}"):
+            st.write(f"📞 {s['clientes']['telefono']}")
+            st.write(f"📍 {s['clientes']['direccion']}")
             st.write(f"💲 Adeudo: ${s['adeudo']}")
             st.info(f"Estado: {s['estado']}")
 
             # ---- PAGO
             with st.expander("💰 Registrar pago"):
                 with st.form(f"pago_{s['id']}"):
-                    monto = st.number_input("Cantidad a pagar", min_value=0.0, key=f"m_{s['id']}")
-                    meses = st.number_input("Meses", min_value=1, step=1, key=f"mes_{s['id']}")
-                    metodo = st.selectbox(
-                        "Método",
-                        ["EFECTIVO", "TARJETA", "TRANSFERENCIA"],
-                        key=f"met_{s['id']}"
-                    )
+                    monto = st.number_input("Cantidad", min_value=0.0)
+                    meses = st.number_input("Meses", min_value=1, step=1)
+                    metodo = st.selectbox("Método", ["EFECTIVO", "TARJETA", "TRANSFERENCIA"])
                     pagar = st.form_submit_button("Aceptar")
 
                 if pagar:
-                    pago = {
+                    supabase.table("pagos").insert({
                         "servicio_id": s["id"],
-                        "fecha_pago": date.today(),
+                        "fecha_pago": date.today().isoformat(),
                         "monto": monto,
                         "meses_pagados": meses,
-                        "metodo_pago": metodo,
-                    }
-                    st.session_state.pagos.append(pago)
-                    s["adeudo"] = max(0, s["adeudo"] - monto)
-                    s["ultimo_pago"] = date.today()
-                    st.success("Pago registrado (mock)")
+                        "metodo_pago": metodo
+                    }).execute()
+
+                    nuevo_adeudo = max(0, s["adeudo"] - monto)
+                    nuevo_proximo = (
+                        date.fromisoformat(s["proximo_pago"]) + relativedelta(months=meses)
+                        if s["proximo_pago"] else None
+                    )
+
+                    supabase.table("servicios").update({
+                        "adeudo": nuevo_adeudo,
+                        "ultimo_pago": date.today().isoformat(),
+                        "proximo_pago": nuevo_proximo.isoformat() if nuevo_proximo else None
+                    }).eq("id", s["id"]).execute()
+
+                    st.success("Pago registrado")
                     st.rerun()
 
             if st.button("⛔ Suspender servicio", key=f"susp_{s['id']}"):
-                s["estado"] = "Suspendido"
+                supabase.table("servicios").update({
+                    "estado": "Suspendido"
+                }).eq("id", s["id"]).execute()
                 st.warning("Servicio suspendido")
                 st.rerun()
 else:
     st.info("No hay servicios activos")
 
 # =========================
-# 🚫 SERVICIOS SUSPENDIDOS
+# 🚫 SUSPENDIDOS
 # =========================
 st.divider()
 st.subheader("🚫 Servicios Suspendidos")
 
 if suspendidos:
     for s in suspendidos:
-        cliente = get_cliente(s["cliente_id"])
-
-        with st.expander(f"⛔ {cliente['nombre_completo']} | {s['nombre_servicio']}"):
+        with st.expander(f"⛔ {s['clientes']['nombre_completo']} | {s['nombre_servicio']}"):
             if st.button("▶️ Reactivar", key=f"react_{s['id']}"):
-                s["estado"] = "Vigente"
+                supabase.table("servicios").update({
+                    "estado": "Vigente"
+                }).eq("id", s["id"]).execute()
                 st.success("Servicio reactivado")
                 st.rerun()
 else:
