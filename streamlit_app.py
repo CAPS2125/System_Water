@@ -3,6 +3,7 @@ import pandas as pd
 from datetime import date
 from sqlalchemy import text
 from database import get_db
+import psycopg2
 from models import Cliente, Servicio, Pago
 
 # =========================
@@ -26,28 +27,33 @@ if "auth" not in st.session_state:
 def login():
     st.title("🔐 Inicio de sesión")
 
-    with st.form("login_form"):
-        username = st.text_input("Usuario")
-        password = st.text_input("Contraseña", type="password")
-        btn = st.form_submit_button("Ingresar")
+    username = st.text_input("Usuario")
+    password = st.text_input("Contraseña", type="password")
 
-    if btn:
-        result = db.execute(
-            text("""
-                SELECT * FROM usuarios
-                WHERE username = :u
-                AND password = :p
-                AND activo = true
-            """),
-            {"u": username.strip(), "p": password.strip()}
-        ).fetchone()
+    if st.button("Ingresar"):
+        conn = psycopg2.connect(st.secrets["DATABASE_URL"])
+        cur = conn.cursor()
 
-        if result:
-            st.session_state.auth = True
-            st.success("Bienvenido")
+        cur.execute(
+            """
+            SELECT id FROM usuarios
+            WHERE username = %s
+            AND password_hash = crypt(%s, password_hash)
+            AND activo = TRUE
+            """,
+            (username, password)
+        )
+
+        user = cur.fetchone()
+        cur.close()
+        conn.close()
+
+        if user:
+            st.session_state["logged_in"] = True
+            st.session_state["user_id"] = user[0]
             st.rerun()
         else:
-            st.error("Credenciales incorrectas")
+            st.error("Usuario o contraseña incorrectos")
 
 
 if not st.session_state.auth:
