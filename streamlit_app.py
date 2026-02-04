@@ -30,6 +30,39 @@ def next_id(lista):
     return len(lista) + 1
 
 # =========================
+# LOGIN MOCK
+# =========================
+def login_mock():
+    if "logged_in" not in st.session_state:
+        st.session_state.logged_in = False
+
+    if st.session_state.logged_in:
+        return True
+
+    st.title("🔐 Inicio de Sesión")
+
+    with st.form("login_form"):
+        email = st.text_input("Correo")
+        password = st.text_input("Contraseña", type="password")
+        entrar = st.form_submit_button("Entrar")
+
+    if entrar:
+        if (
+            email == st.secrets["login_email"]
+            and password == st.secrets["login_password"]
+        ):
+            st.session_state.logged_in = True
+            st.success("Acceso concedido")
+            st.rerun()
+        else:
+            st.error("Credenciales incorrectas")
+
+    return False
+
+if not login_mock():
+    st.stop()
+
+# =========================
 # ➕ ALTA CLIENTE + SERVICIO
 # =========================
 st.title("📊 Control de Clientes y Servicios")
