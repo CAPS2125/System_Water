@@ -10,7 +10,7 @@ import psycopg2
 # =========================
 @st.cache_resource
 def get_engine():
-    url = st.secrets["DATABASE_URL"]
+    url = st.secrets["databaseurl"]
 
     # Forzar psycopg2 (recomendado)
     if url.startswith("postgresql://"):
