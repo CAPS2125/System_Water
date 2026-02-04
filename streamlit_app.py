@@ -1,13 +1,35 @@
 import streamlit as st
 import pandas as pd
 from datetime import date
-from sqlalchemy import text
-from database import get_db
+from sqlalchemy import create_engine, text
+from sqlalchemy.orm import sessionmaker
 import psycopg2
+
+# =========================
+# CONFIGURACIÓN DE BASE DE DATOS (Antes era database.py)
+# =========================
+@st.cache_resource
+def get_engine():
+    # Usamos postgresql+psycopg2 para asegurar compatibilidad
+    url = st.secrets["databaseurl"]
+    if url.startswith("postgresql://"):
+        url = url.replace("postgresql://", "postgresql+psycopg2://", 1)
+    return create_engine(url)
+
+def get_db():
+    engine = get_engine()
+    SessionLocal = sessionmaker(bind=engine, autocommit=False, autoflush=False)
+    return SessionLocal()
+
+# Inicializamos la sesión de base de datos
+db = get_db()
+
+# NOTA: Asegúrate de que las clases Cliente, Servicio y Pago 
+# estén definidas arriba o importadas de models.py
 from models import Cliente, Servicio, Pago
 
 # =========================
-# CONFIG
+# CONFIG STREAMLIT
 # =========================
 st.set_page_config(
     page_title="Control de Servicios",
@@ -15,14 +37,11 @@ st.set_page_config(
     layout="wide"
 )
 
-db = get_db()
-
 # =========================
 # AUTH
 # =========================
-if "auth" not in st.session_state:
-    st.session_state.auth = False
-
+if "logged_in" not in st.session_state:
+    st.session_state["logged_in"] = False
 
 def login():
     st.title("🔐 Inicio de sesión")
@@ -31,33 +50,33 @@ def login():
     password = st.text_input("Contraseña", type="password")
     
     if st.button("Ingresar"):
-        conn = psycopg2.connect(str(st.secrets["databaseurl"]))
-        cur = conn.cursor()
+        try:
+            # Usamos psycopg2 para la validación de contraseña con la extensión pgcrypto de Supabase
+            conn = psycopg2.connect(st.secrets["databaseurl"])
+            cur = conn.cursor()
 
-        cur.execute(
-            """
-            SELECT id FROM usuarios
-            WHERE username = %s
-            AND password_hash = crypt(%s, password_hash)
-            AND activo = TRUE
-            """,
-            (username, password)
-        )
+            cur.execute(
+                """
+                SELECT id FROM usuarios 
+                WHERE username = %s 
+                AND password_hash = crypt(%s, password_hash)
+                AND activo = TRUE
+                """,
+                (username, password)
+            )
 
-        user = cur.fetchone()
-        cur.close()
-        conn.close()
+            user = cur.fetchone()
+            cur.close()
+            conn.close()
 
-        if user:
-            st.session_state["logged_in"] = True
-            st.session_state["user_id"] = user[0]
-            st.rerun()
-        else:
-            st.error("Usuario o contraseña incorrectos")
-
-
-if "logged_in" not in st.session_state:
-    st.session_state["logged_in"] = False
+            if user:
+                st.session_state["logged_in"] = True
+                st.session_state["user_id"] = user[0]
+                st.rerun()
+            else:
+                st.error("Usuario o contraseña incorrectos")
+        except Exception as e:
+            st.error(f"Error de conexión: {e}")
 
 if not st.session_state["logged_in"]:
     login()
@@ -69,14 +88,12 @@ if not st.session_state["logged_in"]:
 def limpiar(txt):
     return txt.strip() if txt else None
 
-
 def calcular_estado(servicio):
     if servicio.estado == "Suspendido":
         return "Suspendido"
     if servicio.proximo_pago and date.today() > servicio.proximo_pago:
         return "Vencido"
     return "Vigente"
-
 
 # =========================
 # ➕ ALTA CLIENTE + SERVICIO
