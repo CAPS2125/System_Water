@@ -5,7 +5,7 @@ from datetime import date
 # ---------------------------
 # CONFIG
 # ---------------------------
-st.set_page_config(page_title="System Water", layout="wide")
+st.set_page_config(page_title="💧 Padre Kino", layout="wide")
 
 # ---------------------------
 # SUPABASE CLIENT
@@ -24,7 +24,7 @@ if "menu" not in st.session_state:
 # ---------------------------
 # SIDEBAR
 # ---------------------------
-st.sidebar.title("💧 System Water")
+st.sidebar.title("💧 Padre Kino")
 
 st.session_state.menu = st.sidebar.radio(
     "Menú",
