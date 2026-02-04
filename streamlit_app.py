@@ -6,19 +6,35 @@ from sqlalchemy.orm import sessionmaker
 import psycopg2
 
 # =========================
-# CONFIGURACIÓN DE BASE DE DATOS (Antes era database.py)
+# CONFIGURACIÓN DE BASE DE DATOS (Supabase)
 # =========================
 @st.cache_resource
 def get_engine():
-    # Usamos postgresql+psycopg2 para asegurar compatibilidad
-    url = st.secrets["databaseurl"]
+    url = st.secrets["DATABASE_URL"]
+
+    # Forzar psycopg2 (recomendado)
     if url.startswith("postgresql://"):
-        url = url.replace("postgresql://", "postgresql+psycopg2://", 1)
-    return create_engine(url)
+        url = url.replace(
+            "postgresql://",
+            "postgresql+psycopg2://",
+            1
+        )
+
+    return create_engine(
+        url,
+        pool_pre_ping=True,   # evita conexiones muertas
+        pool_size=5,
+        max_overflow=10
+    )
+
+engine = get_engine()
+SessionLocal = sessionmaker(
+    bind=engine,
+    autocommit=False,
+    autoflush=False
+)
 
 def get_db():
-    engine = get_engine()
-    SessionLocal = sessionmaker(bind=engine, autocommit=False, autoflush=False)
     return SessionLocal()
 
 # Inicializamos la sesión de base de datos
