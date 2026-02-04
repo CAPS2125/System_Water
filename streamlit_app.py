@@ -107,13 +107,13 @@ elif st.session_state.menu == "Lecturas":
         .eq("tipo_servicio", "MEDIDO") \
         .execute().data
 
-    servicio_map = {
-        f"{s['clientes']['nombre']} | {s['nombre_servicio']}": s["id"]
+    opciones = {
+        s["id"]: f"{s['clientes']['nombre']} | {s['nombre_servicio']}"
         for s in servicios
     }
 
     with st.form("nueva_lectura"):
-        servicio = st.selectbox("Servicio", servicio_map.keys())
+        servicio_id = st.selectbox("Servicio", options=list(opciones.keys()), format_func=lambda x: opciones[x])
         l_anterior = st.number_input("Lectura anterior", min_value=0.0)
         l_actual = st.number_input("Lectura actual", min_value=0.0)
         fecha = st.date_input("Fecha", value=date.today())
