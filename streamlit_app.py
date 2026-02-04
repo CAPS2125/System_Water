@@ -31,7 +31,7 @@ def login():
     password = st.text_input("Contraseña", type="password")
 
     if st.button("Ingresar"):
-        conn = psycopg2.connect(st.secrets["DATABASE_URL"])
+        conn = psycopg2.connect(st.secrets["databaseurl"])
         cur = conn.cursor()
 
         cur.execute(
