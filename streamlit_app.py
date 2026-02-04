@@ -6,13 +6,6 @@ from database import get_db
 import psycopg2
 from models import Cliente, Servicio, Pago
 
-if "logged_in" not in st.session_state:
-    st.session_state["logged_in"] = False
-
-if not st.session_state["logged_in"]:
-    login()
-    st.stop()
-
 # =========================
 # CONFIG
 # =========================
@@ -63,7 +56,10 @@ def login():
             st.error("Usuario o contraseña incorrectos")
 
 
-if not st.session_state.auth:
+if "logged_in" not in st.session_state:
+    st.session_state["logged_in"] = False
+
+if not st.session_state["logged_in"]:
     login()
     st.stop()
 
