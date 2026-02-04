@@ -2,7 +2,7 @@ import streamlit as st
 import pandas as pd
 from datetime import date
 from sqlalchemy import text
-from database import SessionLocal
+from database import get_db
 from models import Cliente, Servicio, Pago
 
 # =========================
@@ -14,7 +14,7 @@ st.set_page_config(
     layout="wide"
 )
 
-db = SessionLocal()
+db = get_db()
 
 # =========================
 # AUTH
