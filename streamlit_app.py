@@ -217,3 +217,48 @@ if suspendidos:
 else:
     st.info("No hay servicios suspendidos")
 
+# =========================
+# 💰 PAGOS
+# =========================
+st.divider()
+st.subheader("💰 Registrar pago")
+
+if activos:
+    servicio_seleccionado = st.selectbox(
+        "Selecciona un servicio",
+        activos,
+        format_func=lambda s: f"{s.cliente.nombre_completo} | {s.nombre_servicio}"
+    )
+
+    with st.form("form_pago_global"):
+        monto = st.number_input("Cantidad a pagar", min_value=0.0)
+        meses = st.number_input("Meses", min_value=1, step=1)
+        metodo = st.selectbox(
+            "Método de pago",
+            ["EFECTIVO", "TARJETA", "TRANSFERENCIA"]
+        )
+
+        pagar = st.form_submit_button("💾 Registrar pago")
+
+    if pagar:
+        pago = {
+            "servicio_id": servicio_seleccionado.id,
+            "fecha_pago": date.today().isoformat(),
+            "monto": monto,
+            "meses_pagados": meses,
+            "metodo_pago": metodo
+        }
+
+        supabase.table("pagos").insert(pago).execute()
+
+        supabase.table("servicios").update({
+            "ultimo_pago": date.today().isoformat(),
+            "adeudo": max(0, servicio_seleccionado.adeudo - monto)
+        }).eq("id", servicio_seleccionado.id).execute()
+
+        st.success("Pago registrado correctamente")
+        st.rerun()
+else:
+    st.info("No hay servicios activos para registrar pagos.")
+
+
