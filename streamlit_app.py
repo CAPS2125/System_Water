@@ -1,264 +1,168 @@
 import streamlit as st
 from supabase import create_client
 from datetime import date
-from dateutil.relativedelta import relativedelta
 
-# =========================
+# ---------------------------
 # CONFIG
-# =========================
-st.set_page_config(
-    page_title="Control de Clientes y Servicios",
-    layout="wide"
-)
+# ---------------------------
+st.set_page_config(page_title="System Water", layout="wide")
 
-# =========================
+# ---------------------------
 # SUPABASE CLIENT
-# =========================
+# ---------------------------
 supabase = create_client(
     st.secrets["supabase_url"],
     st.secrets["supabase_anon_key"]
 )
 
-# =========================
-# LOGIN MOCK
-# =========================
-def login():
-    st.title("🔐 Iniciar sesión")
+# ---------------------------
+# SESSION STATE
+# ---------------------------
+if "menu" not in st.session_state:
+    st.session_state.menu = "Clientes"
 
-    with st.form("login"):
-        email = st.text_input("Correo")
-        password = st.text_input("Contraseña", type="password")
-        submit = st.form_submit_button("Entrar")
+# ---------------------------
+# SIDEBAR
+# ---------------------------
+st.sidebar.title("💧 System Water")
 
-    if submit:
-        if (
-            email == st.secrets["login_email"]
-            and password == st.secrets["login_password"]
-        ):
-            st.session_state["auth"] = True
-            st.rerun()
-        else:
-            st.error("Credenciales incorrectas")
+st.session_state.menu = st.sidebar.radio(
+    "Menú",
+    ["Clientes", "Servicios", "Lecturas", "Pagos"]
+)
 
-if "auth" not in st.session_state:
-    st.session_state["auth"] = False
+# ======================================================
+# CLIENTES
+# ======================================================
+if st.session_state.menu == "Clientes":
+    st.title("👤 Clientes")
 
-if not st.session_state["auth"]:
-    login()
-    st.stop()
+    with st.form("nuevo_cliente"):
+        col1, col2 = st.columns(2)
+        nombre = col1.text_input("Nombre")
+        email = col2.text_input("Email")
+        telefono = col1.text_input("Teléfono")
+        direccion = col2.text_input("Dirección")
+        submitted = st.form_submit_button("Guardar cliente")
 
-# =========================
-# HELPERS
-# =========================
-def limpiar(txt):
-    return txt.strip() if txt else None
+        if submitted:
+            supabase.table("clientes").insert({
+                "nombre": nombre,
+                "email": email,
+                "telefono": telefono,
+                "direccion": direccion
+            }).execute()
+            st.success("Cliente agregado")
 
-def calcular_estado(servicio):
-    if servicio["estado"] == "Suspendido":
-        return "Suspendido"
-    if servicio["proximo_pago"] and date.today() > date.fromisoformat(servicio["proximo_pago"]):
-        return "Vencido"
-    return "Vigente"
+    clientes = supabase.table("clientes").select("*").execute().data
 
-# =========================
-# HEADER
-# =========================
-st.title("📊 Control de Clientes y Servicios")
+    st.divider()
+    for c in clientes:
+        estado_color = "🟢" if c["estado"] == "Activo" else "🔴"
+        st.write(f"{estado_color} **{c['nombre']}** — {c['email']}")
 
-# =========================
-# ➕ ALTA CLIENTE + SERVICIO
-# =========================
-st.subheader("➕ Registrar cliente y servicio")
+# ======================================================
+# SERVICIOS
+# ======================================================
+elif st.session_state.menu == "Servicios":
+    st.title("🔧 Servicios")
 
-with st.form("alta_cliente"):
-    col1, col2 = st.columns(2)
+    clientes = supabase.table("clientes").select("id,nombre").execute().data
+    cliente_map = {c["nombre"]: c["id"] for c in clientes}
 
-    with col1:
-        nombre = st.text_input("Nombre completo")
-        telefono = st.text_input("Teléfono")
-        correo = st.text_input("Correo")
-        direccion = st.text_input("Dirección")
+    with st.form("nuevo_servicio"):
+        col1, col2, col3 = st.columns(3)
+        cliente = col1.selectbox("Cliente", cliente_map.keys())
+        nombre_servicio = col2.text_input("Nombre del servicio")
+        tipo = col3.selectbox("Tipo", ["FIJO", "MEDIDO"])
+        tarifa = col1.number_input("Tarifa", min_value=0.0)
+        submitted = st.form_submit_button("Agregar servicio")
 
-    with col2:
-        servicio_nombre = st.text_input("Servicio")
-        tipo_servicio = st.selectbox("Tipo", ["FIJO", "MEDIDO"])
-        tarifa = st.number_input("Tarifa", min_value=0.0)
-        lectura = st.number_input("Lectura inicial", min_value=0)
+        if submitted:
+            supabase.table("servicios").insert({
+                "cliente_id": cliente_map[cliente],
+                "nombre_servicio": nombre_servicio,
+                "tipo_servicio": tipo,
+                "tarifa": tarifa
+            }).execute()
+            st.success("Servicio creado")
 
-    col3, col4 = st.columns(2)
-    with col3:
-        ultimo_pago = st.date_input("Último pago", value=None)
-    with col4:
-        proximo_pago = st.date_input("Próximo pago", value=None)
+    servicios = supabase.table("servicios") \
+        .select("id,nombre_servicio,estado,clientes(nombre)") \
+        .execute().data
 
-    guardar = st.form_submit_button("💾 Guardar")
+    st.divider()
+    for s in servicios:
+        color = "🟢" if s["estado"] == "Vigente" else "🔴"
+        st.write(f"{color} **{s['nombre_servicio']}** — {s['clientes']['nombre']}")
 
-    if guardar and nombre:
-        cliente = supabase.table("clientes").insert({
-            "nombre_completo": limpiar(nombre),
-            "telefono": limpiar(telefono),
-            "correo": limpiar(correo),
-            "direccion": limpiar(direccion)
-        }).execute()
+# ======================================================
+# LECTURAS
+# ======================================================
+elif st.session_state.menu == "Lecturas":
+    st.title("📊 Lecturas")
 
-        cliente_id = cliente.data[0]["id"]
+    servicios = supabase.table("servicios") \
+        .select("id,nombre_servicio,clientes(nombre)") \
+        .eq("tipo_servicio", "MEDIDO") \
+        .execute().data
 
-        servicio = {
-            "cliente_id": cliente_id,
-            "nombre_servicio": limpiar(servicio_nombre),
-            "tipo_servicio": tipo_servicio,
-            "tarifa": tarifa,
-            "lectura_anterior": lectura,
-            "ultimo_pago": ultimo_pago.isoformat() if ultimo_pago else None,
-            "proximo_pago": proximo_pago.isoformat() if proximo_pago else None,
-            "adeudo": 0,
-            "estado": "Vigente"
-        }
+    servicio_map = {
+        f"{s['clientes']['nombre']} | {s['nombre_servicio']}": s["id"]
+        for s in servicios
+    }
 
-        servicio["estado"] = calcular_estado(servicio)
+    with st.form("nueva_lectura"):
+        servicio = st.selectbox("Servicio", servicio_map.keys())
+        l_anterior = st.number_input("Lectura anterior", min_value=0.0)
+        l_actual = st.number_input("Lectura actual", min_value=0.0)
+        fecha = st.date_input("Fecha", value=date.today())
+        submitted = st.form_submit_button("Registrar lectura")
 
-        supabase.table("servicios").insert(servicio).execute()
+        if submitted:
+            supabase.table("lecturas").insert({
+                "servicio_id": servicio_map[servicio],
+                "lectura_anterior": l_anterior,
+                "lectura_actual": l_actual,
+                "fecha": fecha.isoformat()
+            }).execute()
+            st.success("Lectura registrada")
 
-        st.success("Cliente y servicio registrados")
-        st.rerun()
+# ======================================================
+# PAGOS (SECCIÓN INDEPENDIENTE)
+# ======================================================
+elif st.session_state.menu == "Pagos":
+    st.title("💰 Pagos")
 
-# =========================
-# 📋 SERVICIOS
-# =========================
-st.divider()
+    servicios = supabase.table("servicios") \
+        .select("id,nombre_servicio,tarifa,clientes(nombre)") \
+        .execute().data
 
-servicios = supabase.table("servicios") \
-    .select("*, clientes(*)") \
-    .execute().data
+    servicio_map = {
+        f"{s['clientes']['nombre']} | {s['nombre_servicio']}": s
+        for s in servicios
+    }
 
-activos = []
-suspendidos = []
+    with st.form("nuevo_pago"):
+        servicio_key = st.selectbox("Servicio", servicio_map.keys())
+        servicio = servicio_map[servicio_key]
 
-for s in servicios:
-    s["estado"] = calcular_estado(s)
-    supabase.table("servicios").update({
-        "estado": s["estado"]
-    }).eq("id", s["id"]).execute()
-
-    if s["estado"] == "Suspendido":
-        suspendidos.append(s)
-    else:
-        activos.append(s)
-
-# =========================
-# ✅ ACTIVOS
-# =========================
-st.subheader("✅ Servicios Activos")
-
-if activos:
-    for s in activos:
-        with st.expander(f"👤 {s['clientes']['nombre_completo']} | {s['nombre_servicio']}"):
-            st.write(f"📞 {s['clientes']['telefono']}")
-            st.write(f"📍 {s['clientes']['direccion']}")
-            st.write(f"💲 Adeudo: ${s['adeudo']}")
-            st.info(f"Estado: {s['estado']}")
-
-            # ---- PAGO
-            with st.expander("💰 Registrar pago"):
-                with st.form(f"pago_{s['id']}"):
-                    monto = st.number_input("Cantidad", min_value=0.0)
-                    meses = st.number_input("Meses", min_value=1, step=1)
-                    metodo = st.selectbox("Método", ["EFECTIVO", "TARJETA", "TRANSFERENCIA"])
-                    pagar = st.form_submit_button("Aceptar")
-
-                if pagar:
-                    supabase.table("pagos").insert({
-                        "servicio_id": s["id"],
-                        "fecha_pago": date.today().isoformat(),
-                        "monto": monto,
-                        "meses_pagados": meses,
-                        "metodo_pago": metodo
-                    }).execute()
-
-                    nuevo_adeudo = max(0, s["adeudo"] - monto)
-                    nuevo_proximo = (
-                        date.fromisoformat(s["proximo_pago"]) + relativedelta(months=meses)
-                        if s["proximo_pago"] else None
-                    )
-
-                    supabase.table("servicios").update({
-                        "adeudo": nuevo_adeudo,
-                        "ultimo_pago": date.today().isoformat(),
-                        "proximo_pago": nuevo_proximo.isoformat() if nuevo_proximo else None
-                    }).eq("id", s["id"]).execute()
-
-                    st.success("Pago registrado")
-                    st.rerun()
-
-            if st.button("⛔ Suspender servicio", key=f"susp_{s['id']}"):
-                supabase.table("servicios").update({
-                    "estado": "Suspendido"
-                }).eq("id", s["id"]).execute()
-                st.warning("Servicio suspendido")
-                st.rerun()
-else:
-    st.info("No hay servicios activos")
-
-# =========================
-# 🚫 SUSPENDIDOS
-# =========================
-st.divider()
-st.subheader("🚫 Servicios Suspendidos")
-
-if suspendidos:
-    for s in suspendidos:
-        with st.expander(f"⛔ {s['clientes']['nombre_completo']} | {s['nombre_servicio']}"):
-            if st.button("▶️ Reactivar", key=f"react_{s['id']}"):
-                supabase.table("servicios").update({
-                    "estado": "Vigente"
-                }).eq("id", s["id"]).execute()
-                st.success("Servicio reactivado")
-                st.rerun()
-else:
-    st.info("No hay servicios suspendidos")
-
-# =========================
-# 💰 PAGOS
-# =========================
-st.divider()
-st.subheader("💰 Registrar pago")
-
-if activos:
-    servicio_seleccionado = st.selectbox(
-        "Selecciona un servicio",
-        servicios,
-        format_func=lambda s: f"{s['clientes']['nombre_completo']} | {s['nombre_servicio']}"
-    )
-
-    with st.form("form_pago_global"):
-        monto = st.number_input("Cantidad a pagar", min_value=0.0)
-        meses = st.number_input("Meses", min_value=1, step=1)
-        metodo = st.selectbox(
-            "Método de pago",
-            ["EFECTIVO", "TARJETA", "TRANSFERENCIA"]
+        monto = st.number_input(
+            "Monto",
+            value=float(servicio["tarifa"]),
+            min_value=0.0
         )
 
-        pagar = st.form_submit_button("💾 Registrar pago")
+        metodo = st.selectbox("Método de pago", ["Efectivo", "Transferencia", "Tarjeta"])
+        fecha = st.date_input("Fecha de pago", value=date.today())
+        submitted = st.form_submit_button("Registrar pago")
 
-    if pagar:
-        pago = {
-            "servicio_id": servicio_seleccionado.id,
-            "fecha_pago": date.today().isoformat(),
-            "monto": monto,
-            "meses_pagados": meses,
-            "metodo_pago": metodo
-        }
-
-        supabase.table("pagos").insert(pago).execute()
-
-        supabase.table("servicios").update({
-            "ultimo_pago": date.today().isoformat(),
-            "adeudo": max(0, servicio_seleccionado.adeudo - monto)
-        }).eq("id", servicio_seleccionado.id).execute()
-
-        st.success("Pago registrado correctamente")
-        st.rerun()
-else:
-    st.info("No hay servicios activos para registrar pagos.")
-
+        if submitted:
+            supabase.table("pagos").insert({
+                "servicio_id": servicio["id"],
+                "monto": monto,
+                "metodo": metodo,
+                "fecha_pago": fecha.isoformat()
+            }).execute()
+            st.success("Pago registrado")
 
