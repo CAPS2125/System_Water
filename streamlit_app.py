@@ -107,7 +107,7 @@ if st.session_state.menu == "Clientes":
     if st.session_state["clientes"]:
         df_clientes = pd.DataFrame(st.session_state["clientes"])
         df_clientes = df_clientes[
-            ["nombre", "numero_cliente", "calle", "lote", "manzana", "telefono", "correo"]
+            ['id', 'nombre', 'numero_cliente', 'calle', 'lote', 'manzana', 'telefono', 'correo', 'created_at']
         ]
         st.dataframe(df_clientes, use_container_width=True)
     else:
