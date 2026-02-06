@@ -49,16 +49,11 @@ columnas_ui = [
 ]
 
 # =========================
-# INIT SESSION STATE
+# INIT CLIENTES DESDE SUPABASE
 # =========================
 if "clientes" not in st.session_state:
-    st.session_state["clientes"] = (
-        supabase.table("clientes")
-        .select("*")
-        .order("created_at")
-        .execute()
-        .data
-    )
+    response = supabase.table("clientes").select("*").execute()
+    st.session_state["clientes"] = response.data or []
 
 if st.session_state.menu == "Clientes":
     st.header("👤 Clientes")
