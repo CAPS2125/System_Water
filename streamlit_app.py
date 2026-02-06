@@ -121,19 +121,19 @@ if st.session_state.menu == "Clientes":
                 st.success("✅ Cliente registrado correctamente")
                 st.rerun()
 
-        # =========================
-        # TABLA DE ESTADO DEL SISTEMA
-        # =========================
-        st.divider()
-        st.subheader("📋 Clientes registrados en el sistema")
+    # =========================
+    # TABLA DE ESTADO DEL SISTEMA
+    # =========================
+    st.divider()
+    st.subheader("📋 Clientes registrados en el sistema")
 
-        if st.session_state["clientes"]:
-            df_clientes = pd.DataFrame(st.session_state["clientes"])
-            columnas_presentes = [c for c in columnas_ui if c in df_clientes.columns]
-            df_clientes = df_clientes[columnas_presentes]
-            st.dataframe(df_clientes, use_container_width=True)
-        else:
-            st.info("Aún no hay clientes registrados")
+    if st.session_state["clientes"]:
+        df_clientes = pd.DataFrame(st.session_state["clientes"])
+        columnas_presentes = [c for c in columnas_ui if c in df_clientes.columns]
+        df_clientes = df_clientes[columnas_presentes]
+        st.dataframe(df_clientes, use_container_width=True)
+    else:
+        st.info("Aún no hay clientes registrados")
 
 # ======================================================
 # SERVICIOS
