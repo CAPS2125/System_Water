@@ -85,55 +85,55 @@ if st.session_state.menu == "Clientes":
             manzana = st.text_input("Manzana")
 
     if st.button("Agregar cliente"):
-    if not nombre or not numero_cliente or not calle:
-        st.error("❌ Campos obligatorios: Nombre, Número de cliente y Dirección")
-    else:
-        # 1️⃣ Verificar si ya existe el número de cliente
-        existente = (
-            supabase
-            .table("clientes")
-            .select("id")
-            .eq("numero_cliente", numero_cliente)
-            .execute()
-            .data
-        )
-
-        if existente:
-            st.warning(
-                f"⚠️ Ya existe un cliente con el número {numero_cliente}"
-            )
+        if not nombre or not numero_cliente or not calle:
+            st.error("❌ Campos obligatorios: Nombre, Número de cliente y Dirección")
         else:
-            nuevo_cliente = {
-                "nombre": nombre,
-                "numero_cliente": numero_cliente,
-                "calle": calle,
-                "lote": lote,
-                "manzana": manzana,
-                "telefono": telefono,
-                "correo": correo
-            }
+            # 1️⃣ Verificar si ya existe el número de cliente
+            existente = (
+                supabase
+                .table("clientes")
+                .select("id")
+                .eq("numero_cliente", numero_cliente)
+                .execute()
+                .data
+            )
 
-            supabase.table("clientes").insert(nuevo_cliente).execute()
+            if existente:
+                st.warning(
+                    f"⚠️ Ya existe un cliente con el número {numero_cliente}"
+                )
+            else:
+                nuevo_cliente = {
+                    "nombre": nombre,
+                    "numero_cliente": numero_cliente,
+                    "calle": calle,
+                    "lote": lote,
+                    "manzana": manzana,
+                    "telefono": telefono,
+                    "correo": correo
+                }
 
-            # 2️⃣ Mantener frontend en sync
-            st.session_state["clientes"].append(nuevo_cliente)
+                supabase.table("clientes").insert(nuevo_cliente).execute()
 
-            st.success("✅ Cliente registrado correctamente")
-            st.rerun()
+                # 2️⃣ Mantener frontend en sync
+                st.session_state["clientes"].append(nuevo_cliente)
 
-    # =========================
-    # TABLA DE ESTADO DEL SISTEMA
-    # =========================
-    st.divider()
-    st.subheader("📋 Clientes registrados en el sistema")
+                st.success("✅ Cliente registrado correctamente")
+                st.rerun()
 
-    if st.session_state["clientes"]:
-        df_clientes = pd.DataFrame(st.session_state["clientes"])
-        columnas_presentes = [c for c in columnas_ui if c in df_clientes.columns]
-        df_clientes = df_clientes[columnas_presentes]
-        st.dataframe(df_clientes, use_container_width=True)
-    else:
-        st.info("Aún no hay clientes registrados")
+        # =========================
+        # TABLA DE ESTADO DEL SISTEMA
+        # =========================
+        st.divider()
+        st.subheader("📋 Clientes registrados en el sistema")
+
+        if st.session_state["clientes"]:
+            df_clientes = pd.DataFrame(st.session_state["clientes"])
+            columnas_presentes = [c for c in columnas_ui if c in df_clientes.columns]
+            df_clientes = df_clientes[columnas_presentes]
+            st.dataframe(df_clientes, use_container_width=True)
+        else:
+            st.info("Aún no hay clientes registrados")
 
 # ======================================================
 # SERVICIOS
