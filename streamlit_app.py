@@ -40,9 +40,23 @@ st.session_state.menu = st.sidebar.radio(
 # ======================================================
 if st.session_state.menu == "Clientes":
     st.header("👤 Clientes")
-
     st.subheader("Agregar nuevo cliente")
 
+    # =========================
+    # INIT SESSION STATE
+    # =========================
+    if "clientes" not in st.session_state:
+        st.session_state["clientes"] = (
+            supabase.table("clientes")
+            .select("*")
+            .order("created_at")
+            .execute()
+            .data
+        )
+
+    # =========================
+    # FORMULARIO
+    # =========================
     col1, col2 = st.columns(2)
 
     with col1:
@@ -53,6 +67,7 @@ if st.session_state.menu == "Clientes":
     with col2:
         correo = st.text_input("Correo electrónico")
         calle = st.text_input("Calle *")
+
         col_lote, col_manzana = st.columns(2)
         with col_lote:
             lote = st.text_input("Lote")
@@ -61,27 +76,39 @@ if st.session_state.menu == "Clientes":
 
     if st.button("Agregar cliente"):
         if not nombre or not numero_cliente or not calle:
-            st.error(
-                "❌ Campos obligatorios: Nombre, Número de cliente y Dirección"
-            )
+            st.error("❌ Campos obligatorios: Nombre, Número de cliente y Dirección")
         else:
-            st.session_state["clientes"].append({
-                "Nombre": nombre,
-                "Número Cliente": numero_cliente,
-                "Calle": calle,
-                "Lote": lote,
-                "Manzana": manzana,
-                "Teléfono": telefono,
-                "Correo": correo
-            })
-            st.success("✅ Cliente registrado correctamente")
+            nuevo_cliente = {
+                "nombre": nombre,
+                "numero_cliente": numero_cliente,
+                "telefono": telefono,
+                "correo": correo,
+                "calle": calle,
+                "lote": lote,
+                "manzana": manzana,
+            }
 
-    # 👇 ESTA TABLA ES EL ESTADO DEL SISTEMA, NO CONFIRMACIÓN
+            try:
+                supabase.table("clientes").insert(nuevo_cliente).execute()
+                st.session_state["clientes"].append(nuevo_cliente)
+                st.success("✅ Cliente registrado correctamente")
+                st.rerun()
+
+            except Exception as e:
+                st.error("❌ Error al guardar el cliente")
+                st.exception(e)
+
+    # =========================
+    # TABLA DE ESTADO DEL SISTEMA
+    # =========================
     st.divider()
     st.subheader("📋 Clientes registrados en el sistema")
 
     if st.session_state["clientes"]:
         df_clientes = pd.DataFrame(st.session_state["clientes"])
+        df_clientes = df_clientes[
+            ["nombre", "numero_cliente", "calle", "lote", "manzana", "telefono", "correo"]
+        ]
         st.dataframe(df_clientes, use_container_width=True)
     else:
         st.info("Aún no hay clientes registrados")
