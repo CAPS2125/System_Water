@@ -85,28 +85,41 @@ if st.session_state.menu == "Clientes":
             manzana = st.text_input("Manzana")
 
     if st.button("Agregar cliente"):
-        if not nombre or not numero_cliente or not calle:
-            st.error("❌ Campos obligatorios: Nombre, Número de cliente y Dirección")
+    if not nombre or not numero_cliente or not calle:
+        st.error("❌ Campos obligatorios: Nombre, Número de cliente y Dirección")
+    else:
+        # 1️⃣ Verificar si ya existe el número de cliente
+        existente = (
+            supabase
+            .table("clientes")
+            .select("id")
+            .eq("numero_cliente", numero_cliente)
+            .execute()
+            .data
+        )
+
+        if existente:
+            st.warning(
+                f"⚠️ Ya existe un cliente con el número {numero_cliente}"
+            )
         else:
             nuevo_cliente = {
                 "nombre": nombre,
                 "numero_cliente": numero_cliente,
-                "telefono": telefono,
-                "correo": correo,
                 "calle": calle,
                 "lote": lote,
                 "manzana": manzana,
+                "telefono": telefono,
+                "correo": correo
             }
 
-            try:
-                supabase.table("clientes").insert(nuevo_cliente).execute()
-                st.session_state["clientes"].append(nuevo_cliente)
-                st.success("✅ Cliente registrado correctamente")
-                st.rerun()
+            supabase.table("clientes").insert(nuevo_cliente).execute()
 
-            except Exception as e:
-                st.error("❌ Error al guardar el cliente")
-                st.exception(e)
+            # 2️⃣ Mantener frontend en sync
+            st.session_state["clientes"].append(nuevo_cliente)
+
+            st.success("✅ Cliente registrado correctamente")
+            st.rerun()
 
     # =========================
     # TABLA DE ESTADO DEL SISTEMA
