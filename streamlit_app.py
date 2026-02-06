@@ -48,21 +48,21 @@ columnas_ui = [
     "correo"
 ]
 
+# =========================
+# INIT SESSION STATE
+# =========================
+if "clientes" not in st.session_state:
+    st.session_state["clientes"] = (
+        supabase.table("clientes")
+        .select("*")
+        .order("created_at")
+        .execute()
+        .data
+    )
+
 if st.session_state.menu == "Clientes":
     st.header("👤 Clientes")
     st.subheader("Agregar nuevo cliente")
-
-    # =========================
-    # INIT SESSION STATE
-    # =========================
-    if "clientes" not in st.session_state:
-        st.session_state["clientes"] = (
-            supabase.table("clientes")
-            .select("*")
-            .order("created_at")
-            .execute()
-            .data
-        )
 
     # =========================
     # FORMULARIO
