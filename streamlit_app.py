@@ -122,13 +122,14 @@ if st.session_state.menu == "Clientes":
     st.divider()
     st.subheader("📋 Clientes registrados en el sistema")
 
-    if st.session_state["clientes"]:
-        df_clientes = pd.DataFrame(st.session_state["clientes"])
+    df_clientes = pd.DataFrame(st.session_state.get("clientes", []))
+
+    if df_clientes.empty:
+        st.info("Aún no hay clientes registrados")
+    else:
         columnas_presentes = [c for c in columnas_ui if c in df_clientes.columns]
         df_clientes = df_clientes[columnas_presentes]
         st.dataframe(df_clientes, use_container_width=True)
-    else:
-        st.info("Aún no hay clientes registrados")
 
 # ======================================================
 # SERVICIOS
