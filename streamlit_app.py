@@ -29,7 +29,7 @@ st.sidebar.title("💧 Padre Kino")
 
 st.session_state.menu = st.sidebar.radio(
     "Menú",
-    ["Clientes", "Servicios", "Lecturas", "Pagos"]
+    ["Clientes", "Tipo de Servicio", "Servicios", "Lecturas", "Pagos"]
 )
 
 # ======================================================
