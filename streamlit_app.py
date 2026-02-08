@@ -212,6 +212,8 @@ elif st.session_state.menu == "Servicios":
 
     cliente_map = {c["nombre"]: c for c in clientes}
     tipo_map = {t["nombre"]: t for t in tipos}
+    st.write(tipos)
+    st.write[tipos_map)
 
     # ======================
     # FORM
