@@ -434,11 +434,20 @@ elif st.session_state.menu == "Pagos":
             cliente_map.keys()
         )
 
+        # Definir saldo actual del cliente seleccionado
+        saldo_actual = cliente_map[cliente_nombre]["saldo_actual"]
+        st.info(f"Saldo actual del cliente: ${saldo_actual:.2f}")
+
         meses = st.number_input(
             "Meses a pagar",
             min_value=1,
             step=1
         )
+
+        # Calcular monto automáticamente según meses
+        tarifa_mensual = saldo_actual / max(meses, 1)
+        monto_pagado = tarifa_mensual * meses
+        st.write(f"Monto a pagar calculado: ${monto_pagado:.2f}")
 
         metodo = st.selectbox(
             "Método de pago",
@@ -451,29 +460,26 @@ elif st.session_state.menu == "Pagos":
     # LÓGICA
     # ======================
     if submitted:
-
         data = cliente_map[cliente_nombre]
         saldo_anterior = data["saldo_actual"]
 
-        # Supuesto: tarifa mensual promedio
-        tarifa_mensual = saldo_anterior / max(meses, 1)
-        monto_pagado = tarifa_mensual * meses
+        # Validar que no se pague más del saldo
+        if monto_pagado > saldo_anterior:
+            st.error("El monto a pagar no puede ser mayor al saldo actual.")
+        else:
+            nuevo_saldo = saldo_anterior - monto_pagado
 
-        saldo_actual = max(saldo_anterior - monto_pagado, 0)
+            nuevo_pago = {
+                "cliente_id": data["cliente_id"],
+                "servicio_id": data["servicio_id"],
+                "fecha_pago": date.today().isoformat(),
+                "meses_pagados": meses,
+                "monto_pagado": monto_pagado,
+                "saldo_anterior": saldo_anterior,
+                "saldo_actual": nuevo_saldo,
+                "metodo_pago": metodo
+            }
 
-        nuevo_pago = {
-            "cliente_id": data["cliente_id"],
-            "servicio_id": data["servicio_id"],
-            "fecha_pago": date.today().isoformat(),
-            "meses_pagados": meses,
-            "monto_pagado": monto_pagado,
-            "saldo_anterior": saldo_anterior,
-            "saldo_actual": saldo_actual,
-            "metodo_pago": metodo
-        }
+            supabase.table("pagos").insert(nuevo_pago).execute()
 
-        supabase.table("pagos").insert(nuevo_pago).execute()
-
-        st.success(
-            f"✅ Pago registrado. Saldo actual: ${saldo_actual:.2f}"
-        )
+            st.success(f"✅ Pago registrado. Nuevo saldo: ${nuevo_saldo:.2f}")
