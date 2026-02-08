@@ -195,5 +195,4 @@ elif st.session_state.menu == "Tipo de Servicios":
                 supabase.table("catalogo_servicios").insert(payload).execute()
                 st.success("✅ Tipo de servicio registrado correctamente")
                 st.toast("Servicio guardado con éxito", icon="🎉")
-                st.rerun()
 
