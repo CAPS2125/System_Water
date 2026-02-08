@@ -129,59 +129,65 @@ if st.session_state.menu == "Clientes":
         st.dataframe(df_clientes, use_container_width=True)
 
 # ======================================================
-# TIPO DE SERVICIO (MOCK)
+# CATÁLOGO DE SERVICIOS
 # ======================================================
-if st.session_state.menu == "Tipo de Servicio":
-    st.header("🧩 Tipos de Servicio")
+elif st.session_state.menu == "Tipo de servicios":
+    st.header("🧾 Catálogo de Servicios")
 
-    tipos = supabase.table("tipos_servicio").select("*").eq("activo", True).execute().data
-    tipo_map = {t["nombre"]: t for t in tipos}
+    with st.form("form_catalogo_servicio"):
+        col1, col2, col3 = st.columns(3)
 
-    tipo_seleccionado = st.selectbox(
-        "Tipo de servicio",
-        options=tipo_map.keys()
-    )
+        nombre = col1.text_input("Nombre del servicio *")
+        tipo = col2.selectbox("Tipo de servicio *", ["FIJO", "MEDIDO"])
+        activo = col3.checkbox("Activo", value=True)
 
-    tipo = tipo_map[tipo_seleccionado]
+        st.divider()
 
-    st.divider()
-
-    # =========================
-    # CATÁLOGO FIJO
-    # =========================
-    st.subheader("📌 Servicio fijo")
-
-    nombre_fijo = st.text_input(
-        "Nombre del servicio fijo",
-        disabled=not tipo["usa_catalogo_fijo"]
-    )
-
-    tarifa_fija = st.number_input(
-        "Tarifa fija",
-        min_value=0.0,
-        step=1.0,
-        disabled=not tipo["usa_catalogo_fijo"]
-    )
-
-    # =========================
-    # MEDIDOR
-    # =========================
-    st.subheader("📏 Servicio medido")
-
-    precio_m3 = st.number_input(
-        "Precio por m³",
-        min_value=0.0,
-        step=0.1,
-        disabled=not tipo["usa_medidor"]
-    )
-
-    # =========================
-    # MOCK SUBMIT
-    # =========================
-    if st.button("Guardar (mock)"):
-        st.success(
-            f"✔ Tipo seleccionado: {tipo_seleccionado}\n"
-            f"Fijo activo: {tipo['usa_catalogo_fijo']} | "
-            f"Medidor activo: {tipo['usa_medidor']}"
+        # ---------- FIJO ----------
+        tarifa_fija = st.number_input(
+            "Tarifa fija ($)",
+            min_value=0.0,
+            step=1.0,
+            disabled=(tipo != "FIJO")
         )
 
+        # ---------- MEDIDO ----------
+        precio_m3 = st.number_input(
+            "Precio por m³ ($)",
+            min_value=0.0,
+            step=0.01,
+            disabled=(tipo != "MEDIDO")
+        )
+
+        submitted = st.form_submit_button("Guardar servicio")
+
+        if submitted:
+            # =========================
+            # VALIDACIONES
+            # =========================
+            if not nombre:
+                st.error("❌ El nombre del servicio es obligatorio")
+
+            elif tipo == "FIJO" and tarifa_fija <= 0:
+                st.error("❌ La tarifa fija debe ser mayor a 0")
+
+            elif tipo == "MEDIDO" and precio_m3 <= 0:
+                st.error("❌ El precio por m³ debe ser mayor a 0")
+
+            else:
+                payload = {
+                    "nombre": nombre,
+                    "tipo": tipo,
+                    "activo": activo,
+                    "tarifa_fija": tarifa_fija if tipo == "FIJO" else None,
+                    "precio_m3": precio_m3 if tipo == "MEDIDO" else None
+                }
+
+                try:
+                    supabase.table("catalogo_servicios").insert(payload).execute()
+                    st.success("✅ Servicio agregado correctamente")
+                    st.rerun()
+
+                except Exception as e:
+                    st.error("❌ Error al guardar el servicio")
+                    st.exception(e)
