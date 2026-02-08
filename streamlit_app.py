@@ -137,31 +137,70 @@ elif st.session_state.menu == "Servicios":
     clientes = supabase.table("clientes").select("id,nombre").execute().data
     cliente_map = {c["nombre"]: c["id"] for c in clientes}
 
+    catalogo_fijo = supabase.table("catalogo_fijo").select("*").execute().data
+    catalogo_medidor = supabase.table("catalogo_medidor").select("*").execute().data
+
+    fijo_map = {c["nombre"]: c for c in catalogo_fijo}
+    medidor_map = {f"${c['precio_m3']} / m³": c for c in catalogo_medidor}
+
     with st.form("nuevo_servicio"):
         col1, col2, col3 = st.columns(3)
-        cliente = col1.selectbox("Cliente", cliente_map.keys())
-        nombre_servicio = col2.text_input("Nombre del servicio")
-        tipo = col3.selectbox("Tipo", ["FIJO", "MEDIDO"])
-        tarifa = col1.number_input("Tarifa", min_value=0.0)
+
+        cliente = col1.selectbox("Cliente *", cliente_map.keys())
+        nombre_servicio = col2.text_input("Nombre del servicio *")
+        tipo = col3.selectbox("Tipo de servicio *", ["FIJO", "MEDIDO"])
+
+        st.divider()
+
+        # =========================
+        # FIJO
+        # =========================
+        servicio_fijo = st.selectbox(
+            "Catálogo servicio fijo",
+            fijo_map.keys(),
+            disabled=(tipo != "FIJO")
+        )
+
+        tarifa_fija = st.number_input(
+            "Tarifa fija",
+            min_value=0.0,
+            value=float(fijo_map[servicio_fijo]["tarifa"]) if tipo == "FIJO" else 0.0,
+            disabled=(tipo != "FIJO")
+        )
+
+        # =========================
+        # MEDIDO
+        # =========================
+        servicio_medido = st.selectbox(
+            "Precio por m³",
+            medidor_map.keys(),
+            disabled=(tipo != "MEDIDO")
+        )
+
         submitted = st.form_submit_button("Agregar servicio")
 
         if submitted:
-            supabase.table("servicios").insert({
-                "cliente_id": cliente_map[cliente],
-                "nombre_servicio": nombre_servicio,
-                "tipo_servicio": tipo,
-                "tarifa": tarifa
-            }).execute()
-            st.success("Servicio creado")
+            if not nombre_servicio:
+                st.error("❌ El nombre del servicio es obligatorio")
+            else:
+                payload = {
+                    "cliente_id": cliente_map[cliente],
+                    "nombre_servicio": nombre_servicio,
+                    "tipo_servicio": tipo,
+                    "estado": "Vigente"
+                }
 
-    servicios = supabase.table("servicios") \
-        .select("id,nombre_servicio,estado,clientes(nombre)") \
-        .execute().data
+                if tipo == "FIJO":
+                    payload["catalogo_fijo_id"] = fijo_map[servicio_fijo]["id"]
+                    payload["tarifa"] = tarifa_fija
 
-    st.divider()
-    for s in servicios:
-        color = "🟢" if s["estado"] == "Vigente" else "🔴"
-        st.write(f"{color} **{s['nombre_servicio']}** — {s['clientes']['nombre']}")
+                if tipo == "MEDIDO":
+                    payload["catalogo_medidor_id"] = medidor_map[servicio_medido]["id"]
+                    payload["tarifa"] = medidor_map[servicio_medido]["precio_m3"]
+
+                supabase.table("servicios").insert(payload).execute()
+                st.success("✅ Servicio creado correctamente")
+                st.rerun()
 
 # ======================================================
 # LECTURAS
