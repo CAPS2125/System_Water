@@ -271,7 +271,7 @@ elif st.session_state.menu == "Servicios":
         st.markdown("### Confirmar asignación")
 
         if tipo_actual["usa_catalogo_fijo"]:
-            st.info(f"Tarifa fija: ${servicio_actual['tarifa']}")
+            st.info(f"Tarifa fija: ${servicio_actual['tarifa_fija']}")
 
         if tipo_actual["usa_medidor"]:
             st.info(f"Precio por m³: ${servicio_actual['precio_m3']}")
