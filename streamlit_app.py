@@ -135,41 +135,41 @@ elif st.session_state.menu == "Tipo de Servicio":
     st.header("🧾 Tipo de Servicio (Catálogo)")
 
     with st.form("nuevo_servicio"):
-    tipo = st.selectbox("Tipo", ["FIJO", "MEDIDO"])
+        tipo = st.selectbox("Tipo", ["FIJO", "MEDIDO"])
 
-    servicio_fijo = None
-    servicio_medido = None
+        servicio_fijo = None
+        servicio_medido = None
 
-    if tipo == "FIJO":
-        servicio_fijo = st.selectbox("Servicio fijo", fijo_map.keys())
-        tarifa_fija = st.number_input("Tarifa", min_value=0.0)
+        if tipo == "FIJO":
+            servicio_fijo = st.selectbox("Servicio fijo", fijo_map.keys())
+            tarifa_fija = st.number_input("Tarifa", min_value=0.0)
 
-    if tipo == "MEDIDO":
-        servicio_medido = st.selectbox("Precio por m³", medidor_map.keys())
+        if tipo == "MEDIDO":
+            servicio_medido = st.selectbox("Precio por m³", medidor_map.keys())
 
-    submitted = st.form_submit_button("Agregar servicio")
+        submitted = st.form_submit_button("Agregar servicio")
 
-if submitted:
-    payload = {
-        "cliente_id": cliente_id,
-        "nombre_servicio": nombre_servicio,
-        "tipo_servicio": tipo,
-        "estado": "Vigente"
-    }
+    if submitted:
+        payload = {
+            "cliente_id": cliente_id,
+            "nombre_servicio": nombre_servicio,
+            "tipo_servicio": tipo,
+            "estado": "Vigente"
+        }
 
-    if tipo == "FIJO":
-        payload.update({
-            "catalogo_fijo_id": fijo_map[servicio_fijo]["id"],
-            "tarifa": tarifa_fija
-        })
+        if tipo == "FIJO":
+            payload.update({
+                "catalogo_fijo_id": fijo_map[servicio_fijo]["id"],
+                "tarifa": tarifa_fija
+            })
 
-    if tipo == "MEDIDO":
-        payload.update({
-            "catalogo_medidor_id": medidor_map[servicio_medido]["id"],
-            "tarifa": medidor_map[servicio_medido]["precio_m3"]
-        })
+        if tipo == "MEDIDO":
+            payload.update({
+                "catalogo_medidor_id": medidor_map[servicio_medido]["id"],
+                "tarifa": medidor_map[servicio_medido]["precio_m3"]
+            })
 
-    supabase.table("servicios").insert(payload).execute()
+        supabase.table("servicios").insert(payload).execute()
 
 # ======================================================
 # SERVICIOS
