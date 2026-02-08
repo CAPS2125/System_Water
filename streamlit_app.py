@@ -307,3 +307,92 @@ elif st.session_state.menu == "Servicios":
 
         supabase.table("servicios").insert(nuevo_servicio).execute()
         st.success("✅ Servicio asignado correctamente al cliente")
+
+# ======================================================
+# LECTURAS
+# ======================================================
+elif st.session_state.menu == "Lecturas":
+    st.header("📊 Toma de Lecturas (Servicios Medidos)")
+
+    # ======================
+    # CLIENTES CON SERVICIO MEDIDO ACTIVO
+    # ======================
+    servicios_medidos = supabase.table("servicios") \
+        .select("id, cliente_id, precio_m3, estado, clientes(nombre)") \
+        .eq("tipo", "MEDIDO") \
+        .eq("estado", "ACTIVO") \
+        .execute().data
+
+    if not servicios_medidos:
+        st.info("No hay servicios medidos activos")
+        st.stop()
+
+    servicio_map = {
+        f"{s['clientes']['nombre']}": s
+        for s in servicios_medidos
+    }
+
+    # ======================
+    # FORMULARIO
+    # ======================
+    with st.form("form_lectura"):
+
+        cliente_nombre = st.selectbox(
+            "Cliente",
+            servicio_map.keys()
+        )
+
+        fecha_lectura = st.date_input(
+            "Fecha de lectura"
+        )
+
+        lectura_actual = st.number_input(
+            "Lectura actual",
+            min_value=0.0
+        )
+
+        submitted = st.form_submit_button("Registrar lectura")
+
+    # ======================
+    # LÓGICA
+    # ======================
+    if submitted:
+
+        servicio = servicio_map[cliente_nombre]
+
+        # Última lectura
+        ultima_lectura = supabase.table("lecturas") \
+            .select("lectura_actual, saldo_actual") \
+            .eq("servicio_id", servicio["id"]) \
+            .order("created_at", desc=True) \
+            .limit(1) \
+            .execute().data
+
+        lectura_anterior = ultima_lectura[0]["lectura_actual"] if ultima_lectura else 0
+        saldo_anterior = ultima_lectura[0]["saldo_actual"] if ultima_lectura else 0
+
+        if lectura_actual <= lectura_anterior:
+            st.error("❌ La lectura actual debe ser mayor a la anterior")
+            st.stop()
+
+        consumo = lectura_actual - lectura_anterior
+        importe = consumo * servicio["precio_m3"]
+        saldo_actual = saldo_anterior + importe
+
+        nueva_lectura = {
+            "cliente_id": servicio["cliente_id"],
+            "servicio_id": servicio["id"],
+            "fecha_lectura": fecha_lectura.isoformat(),
+            "lectura_anterior": lectura_anterior,
+            "lectura_actual": lectura_actual,
+            "consumo": consumo,
+            "precio_m3": servicio["precio_m3"],
+            "importe": importe,
+            "saldo_anterior": saldo_anterior,
+            "saldo_actual": saldo_actual
+        }
+
+        supabase.table("lecturas").insert(nueva_lectura).execute()
+
+        st.success(f"✅ Lectura registrada. Importe: ${importe:.2f}")
+
