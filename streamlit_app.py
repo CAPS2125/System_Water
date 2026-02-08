@@ -131,7 +131,7 @@ if st.session_state.menu == "Clientes":
 # ======================================================
 # TIPO DE SERVICIOS
 # ======================================================
-elif st.session_state.menu == "Tipo de servicios":
+elif st.session_state.menu == "Tipo de Servicios":
     st.header("🧾 Tipo de Servicios")
 
     # 🔹 ESTE SELECTBOX DEBE IR FUERA DEL FORM
