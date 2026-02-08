@@ -399,14 +399,14 @@ elif st.session_state.menu == "Lecturas":
 # ======================================================
 # PAGOS
 # ======================================================
-elif st.session_state.menu == "Pagos":
+if st.session_state.menu == "Pagos":
     st.header("💳 Registro de Pagos")
 
     # ======================
-    # CLIENTES CON DEUDA
+    # TRAER CLIENTES CON DEUDA
     # ======================
     ultimas_lecturas = supabase.table("lecturas") \
-        .select("cliente_id, servicio_id, saldo_actual as deuda, clientes(nombre)") \
+        .select("cliente_id, servicio_id, saldo_actual, clientes(nombre)") \
         .order("created_at", desc=True) \
         .execute().data
 
@@ -419,36 +419,26 @@ elif st.session_state.menu == "Pagos":
         st.info("No hay clientes con deuda registrada")
         st.stop()
 
-    cliente_map = {
-        r["clientes"]["nombre"]: r
-        for r in deuda_map.values()
-    }
+    cliente_map = {r["clientes"]["nombre"]: r for r in deuda_map.values()}
 
     # ======================
-    # FORMULARIO
+    # FORMULARIO STREAMLIT
     # ======================
     with st.form("form_pago"):
-
         cliente_nombre = st.selectbox(
             "Cliente",
             cliente_map.keys()
         )
 
-        # Deuda actual del cliente seleccionado
-        deuda_actual = cliente_map[cliente_nombre]["deuda"]
-        st.info(f"Deuda actual del cliente: ${deuda_actual:.2f}")
-
-        meses = st.number_input(
-            "Meses a pagar",
-            min_value=1,
-            step=1
-        )
+        # Deuda actual
+        deuda_actual = cliente_map[cliente_nombre]["saldo_actual"]
+        st.info(f"Deuda actual: ${deuda_actual:.2f}")
 
         monto_pagado = st.number_input(
             "Monto a pagar",
             min_value=0.0,
             max_value=deuda_actual,
-            value=deuda_actual / meses  # sugerencia inicial por mes
+            value=deuda_actual
         )
 
         metodo = st.selectbox(
@@ -459,16 +449,14 @@ elif st.session_state.menu == "Pagos":
         submitted = st.form_submit_button("Registrar pago")
 
     # ======================
-    # LÓGICA
+    # REGISTRAR PAGO
     # ======================
     if submitted:
         data = cliente_map[cliente_nombre]
-        deuda_anterior = data["deuda"]
+        deuda_anterior = data["saldo_actual"]
 
         if monto_pagado <= 0:
             st.error("El monto a pagar debe ser mayor a 0.")
-        elif monto_pagado > deuda_anterior:
-            st.error("No se puede pagar más que la deuda actual.")
         else:
             nueva_deuda = deuda_anterior - monto_pagado
 
@@ -476,17 +464,15 @@ elif st.session_state.menu == "Pagos":
                 "cliente_id": data["cliente_id"],
                 "servicio_id": data["servicio_id"],
                 "fecha_pago": date.today().isoformat(),
-                "meses_pagados": meses,
                 "monto_pagado": monto_pagado,
                 "saldo_anterior": deuda_anterior,
-                "saldo_actual": nueva_deuda,  # opcional para registrar en pagos
-                "metodo_pago": metodo,
-                "observaciones": None
+                "saldo_actual": nueva_deuda,
+                "metodo_pago": metodo
             }
 
             supabase.table("pagos").insert(nuevo_pago).execute()
 
             st.success(f"✅ Pago registrado. Deuda restante: ${nueva_deuda:.2f}")
 
-            # Si quieres, también puedes actualizar la deuda en la tabla lecturas:
+            # Opcional: actualizar la deuda en lecturas
             supabase.table("lecturas").update({"saldo_actual": nueva_deuda}).eq("cliente_id", data["cliente_id"]).execute()
