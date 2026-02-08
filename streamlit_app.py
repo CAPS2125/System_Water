@@ -200,67 +200,102 @@ elif st.session_state.menu == "Tipo de Servicios":
 # SERVICIOS
 # ======================================================
 elif st.session_state.menu == "Servicios":
-
     st.header("🧾 Asignar Servicio a Cliente")
 
     # ======================
-    # Datos base
+    # DATOS BASE
     # ======================
     clientes = supabase.table("clientes").select("id, nombre").execute().data
-    tipos = supabase.table("tipos_servicio").select("*").execute().data
-    servicios = supabase.table("catalogo_servicios").select("*").execute().data
+    tipos_servicio = supabase.table("tipos_servicio").select("*").execute().data
+    catalogo = supabase.table("servicios_catalogo").select("*").execute().data
 
-    cliente_map = {c["nombre"]: c for c in clientes}
-    tipo_map = {t["nombre"]: t for t in tipos}
-    st.write(tipos)
-    st.write(tipos_map)
+    if not clientes:
+        st.warning("No hay clientes registrados")
+        st.stop()
+
+    if not tipos_servicio:
+        st.warning("No hay tipos de servicio configurados")
+        st.stop()
 
     # ======================
-    # FORM
+    # SELECTS BASE
+    # ======================
+    cliente_nombre = st.selectbox(
+        "Cliente",
+        [c["nombre"] for c in clientes]
+    )
+
+    tipo_nombre = st.selectbox(
+        "Tipo de servicio",
+        [t["nombre"] for t in tipos_servicio]
+    )
+
+    # ======================
+    # OBTENER TIPO REAL (SIN MAPEO ROTO)
+    # ======================
+    tipo_actual = next(
+        t for t in tipos_servicio if t["nombre"] == tipo_nombre
+    )
+
+    # ======================
+    # FILTRAR CATÁLOGO SEGÚN TIPO
+    # ======================
+    if tipo_actual["usa_catalogo_fijo"]:
+        catalogo_filtrado = [
+            s for s in catalogo if s["tipo"] == "FIJO"
+        ]
+    elif tipo_actual["usa_medidor"]:
+        catalogo_filtrado = [
+            s for s in catalogo if s["tipo"] == "MEDIDO"
+        ]
+    else:
+        catalogo_filtrado = []
+
+    if not catalogo_filtrado:
+        st.warning("No hay servicios disponibles para este tipo")
+        st.stop()
+
+    servicio_nombre = st.selectbox(
+        "Servicio",
+        [s["nombre"] for s in catalogo_filtrado]
+    )
+
+    servicio_actual = next(
+        s for s in catalogo_filtrado if s["nombre"] == servicio_nombre
+    )
+
+    # ======================
+    # FORMULARIO (SOLO SUBMIT)
     # ======================
     with st.form("form_asignar_servicio"):
+        st.markdown("### Confirmar asignación")
 
-        cliente_nombre = st.selectbox(
-            "Cliente",
-            list(cliente_map.keys())
-        )
+        if tipo_actual["usa_catalogo_fijo"]:
+            st.info(f"Tarifa fija: ${servicio_actual['tarifa']}")
 
-        tipo_nombre = st.selectbox(
-            "Tipo de servicio",
-            list(tipo_map.keys())
-        )
-
-        tipo_actual = tipo_map[tipo_nombre]["tipo"]
-
-        # Filtrar catálogo según tipo
-        servicios_filtrados = [
-            s for s in servicios if s["tipo"] == tipo_actual
-        ]
-
-        servicio_nombre = st.selectbox(
-            "Servicio",
-            [s["nombre"] for s in servicios_filtrados]
-        )
+        if tipo_actual["usa_medidor"]:
+            st.info(f"Precio por m³: ${servicio_actual['precio_m3']}")
 
         submitted = st.form_submit_button("Asignar servicio")
 
     # ======================
-    # LÓGICA
+    # LÓGICA DE NEGOCIO
     # ======================
     if submitted:
-
-        servicio_data = next(
-            s for s in servicios_filtrados if s["nombre"] == servicio_nombre
+        cliente_actual = next(
+            c for c in clientes if c["nombre"] == cliente_nombre
         )
 
         nuevo_servicio = {
-            "cliente_id": cliente_map[cliente_nombre]["id"],
-            "servicio_catalogo_id": servicio_data["id"],
+            "cliente_id": cliente_actual["id"],
+            "tipo_servicio_id": tipo_actual["id"],
+            "servicio_catalogo_id": servicio_actual["id"],
+            "tipo": tipo_actual["nombre"],
+            "tarifa_fija": servicio_actual["tarifa"] if tipo_actual["usa_catalogo_fijo"] else None,
+            "precio_m3": servicio_actual["precio_m3"] if tipo_actual["usa_medidor"] else None,
             "estado": "ACTIVO"
         }
 
-        supabase.table("servicios_clientes").insert(nuevo_servicio).execute()
-        st.success("✅ Servicio asignado correctamente")
+        supabase.table("servicios").insert(nuevo_servicio).execute()
 
-
-
+        st.success("✅ Servicio asignado correctamente al cliente")
