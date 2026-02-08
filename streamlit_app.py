@@ -151,7 +151,8 @@ elif st.session_state.menu == "Tipo de Servicio":
             else:
                 supabase.table("catalogo_servicios_fijos").insert({
                     "nombre": nombre_fijo,
-                    "tarifa": tarifa_fija
+                    "tarifa": tarifa_fija,
+                    "activo": True
                 }).execute()
                 st.success("✅ Servicio fijo agregado")
                 st.rerun()
@@ -188,7 +189,7 @@ elif st.session_state.menu == "Tipo de Servicio":
             st.info("No hay precios registrados")
 
 # ======================================================
-# TIPOS DE SERVICIOs
+# SERVICIOS
 # ======================================================
 elif st.session_state.menu == "Servicios":
     st.header("🔧 Servicios")
