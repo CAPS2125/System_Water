@@ -29,7 +29,7 @@ st.sidebar.title("💧 Padre Kino")
 
 st.session_state.menu = st.sidebar.radio(
     "Menú",
-    ["Clientes", "Tipo de Servicio", "Servicios", "Lecturas", "Pagos"]
+    ["Clientes", "Tipo de Servicios", "Servicios", "Lecturas", "Pagos"]
 )
 
 # ======================================================
@@ -131,7 +131,7 @@ if st.session_state.menu == "Clientes":
 # ======================================================
 # CATÁLOGO DE SERVICIOS
 # ======================================================
-elif st.session_state.menu == "Tipo de servicios":
+elif st.session_state.menu == "Tipo de Servicios":
     st.header("🧾 Catálogo de Servicios")
 
     with st.form("form_catalogo_servicio"):
