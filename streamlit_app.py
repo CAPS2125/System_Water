@@ -197,10 +197,7 @@ elif st.session_state.menu == "Tipo de Servicios":
                 st.toast("Servicio guardado con éxito", icon="🎉")
 
 # ======================================================
-# TIPO DE SERVICIOS
-# ======================================================
-# ======================================================
-# TIPO DE SERVICIOS
+# SERVICIOS
 # ======================================================
 elif st.session_state.menu == "Servicios":
 
@@ -210,7 +207,7 @@ elif st.session_state.menu == "Servicios":
     # Datos base
     # ======================
     clientes = supabase.table("clientes").select("id, nombre").execute().data
-    tipos_servicio = supabase.table("tipos_servicio").select("*").execute().data
+    tipos_servicio = supabase.table("tipo_servicios").select("*").execute().data
 
     if not clientes or not tipos_servicio:
         st.warning("⚠️ Deben existir clientes y tipos de servicio")
@@ -220,7 +217,7 @@ elif st.session_state.menu == "Servicios":
     tipo_map = {t["nombre"]: t for t in tipos_servicio}
 
     # ======================
-    # FORM (solo inputs)
+    # FORM
     # ======================
     with st.form("form_servicio"):
 
@@ -234,7 +231,8 @@ elif st.session_state.menu == "Servicios":
             list(tipo_map.keys())
         )
 
-        tipo_actual = tipo_map[tipo_nombre]["tipo"]
+        # 👇 DEFENSIVO: aún no asumimos que existe
+        tipo_actual = tipo_map.get(tipo_nombre, {}).get("tipo", "")
 
         tarifa_fija = st.number_input(
             "Tarifa fija",
@@ -251,24 +249,23 @@ elif st.session_state.menu == "Servicios":
         submitted = st.form_submit_button("Asignar servicio")
 
     # ======================
-    # LÓGICA (fuera del form)
+    # LÓGICA
     # ======================
     if submitted:
 
         tipo_data = tipo_map[tipo_nombre]
-        tipo = tipo_data["tipo"]
 
         nuevo_servicio = {
             "cliente_id": cliente_map[cliente_nombre]["id"],
             "tipo_servicio_id": tipo_data["id"],
-            "tipo": tipo,
-            "tarifa_fija": tarifa_fija if tipo == "FIJO" else None,
-            "precio_m3": precio_m3 if tipo == "MEDIDO" else None,
+            "tipo": tipo_data["tipo"],
+            "tarifa_fija": tarifa_fija if tipo_data["tipo"] == "FIJO" else None,
+            "precio_m3": precio_m3 if tipo_data["tipo"] == "MEDIDO" else None,
             "estado": "ACTIVO"
         }
 
         supabase.table("servicios").insert(nuevo_servicio).execute()
-
         st.success("✅ Servicio asignado correctamente")
+
 
 
