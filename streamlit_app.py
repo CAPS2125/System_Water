@@ -465,7 +465,6 @@ if st.session_state.menu == "Pagos":
                 "servicio_id": data["servicio_id"],
                 "fecha_pago": date.today().isoformat(),
                 "monto_pagado": monto_pagado,
-                "saldo_anterior": deuda_anterior,
                 "saldo_actual": nueva_deuda,
                 "metodo_pago": metodo
             }
