@@ -480,7 +480,8 @@ elif st.session_state.menu == "Pagos":
                 "monto_pagado": monto_pagado,
                 "saldo_anterior": deuda_anterior,
                 "saldo_actual": nueva_deuda,  # opcional para registrar en pagos
-                "metodo_pago": metodo
+                "metodo_pago": metodo,
+                "observaciones": None
             }
 
             supabase.table("pagos").insert(nuevo_pago).execute()
