@@ -288,7 +288,7 @@ elif st.session_state.menu == "Servicios":
 
         nuevo_servicio = {
             "cliente_id": cliente_actual["id"],
-            "tipo_servicio_id": tipo_actual["id"],
+            "tipos_servicio_id": tipo_actual["id"],
             "servicio_catalogo_id": servicio_actual["id"],
             "tipo": tipo_actual["nombre"],
             "tarifa_fija": servicio_actual["tarifa_fija"] if tipo_actual["usa_catalogo_fijo"] else None,
