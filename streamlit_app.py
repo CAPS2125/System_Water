@@ -137,7 +137,7 @@ elif st.session_state.menu == "Servicios":
     clientes = supabase.table("clientes").select("id,nombre").execute().data
     cliente_map = {c["nombre"]: c["id"] for c in clientes}
 
-    catalogo_fijo = supabase.table("catalogo_servicios_fijo").select("*").execute().data
+    catalogo_fijo = supabase.table("catalogo_servicios_fijos").select("*").execute().data
     catalogo_medidor = supabase.table("catalogo_medidor").select("*").execute().data
 
     fijo_map = {c["nombre"]: c for c in catalogo_fijo}
