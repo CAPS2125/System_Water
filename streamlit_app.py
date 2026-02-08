@@ -207,7 +207,7 @@ elif st.session_state.menu == "Servicios":
     # Datos base
     # ======================
     clientes = supabase.table("clientes").select("id, nombre").execute().data
-    tipos_servicio = supabase.table("tipo_servicios").select("*").execute().data
+    tipos_servicio = supabase.table("tipos_servicio").select("*").execute().data
 
     if not clientes or not tipos_servicio:
         st.warning("⚠️ Deben existir clientes y tipos de servicio")
