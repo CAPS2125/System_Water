@@ -264,6 +264,10 @@ elif st.session_state.menu == "Servicios":
         s for s in catalogo_filtrado if s["nombre"] == servicio_nombre
     )
 
+    fecha_inicio = st.date_input(
+        "Fecha de inicio del servicio"
+    )
+
     # ======================
     # FORMULARIO (SOLO SUBMIT)
     # ======================
@@ -293,7 +297,8 @@ elif st.session_state.menu == "Servicios":
             "tipo": tipo_actual["nombre"],
             "tarifa_fija": servicio_actual["tarifa_fija"] if tipo_actual["usa_catalogo_fijo"] else None,
             "precio_m3": servicio_actual["precio_m3"] if tipo_actual["usa_medidor"] else None,
-            "estado": "ACTIVO"
+            "estado": "ACTIVO",
+            "fecha_inicio": fecha_inicio.isoformat()
         }
 
         st.write("📦 Payload a insertar:", nuevo_servicio)
