@@ -202,50 +202,68 @@ elif st.session_state.menu == "Tipo de Servicios":
 elif st.session_state.menu == "Servicios":
     st.header("🧾 Asignar Servicio a Cliente")
 
-    # --- Cargar datos ---
+    # ======================
+    # Cargar datos base
+    # ======================
     clientes = supabase.table("clientes").select("id, nombre").execute().data
-    tipos = supabase.table("tipos_servicio").select("*").execute().data
+    tipos_servicio = supabase.table("tipo_servicios").select("*").execute().data
 
-    clientes_map = {c["nombre"]: c["id"] for c in clientes}
-    tipos_map = {t["nombre"]: t for t in tipos}
+    cliente_map = {c["nombre"]: c["id"] for c in clientes}
+    tipo_map = {t["nombre"]: t for t in tipos_servicio}
 
-    with st.form("servicio_form"):
+    # ======================
+    # Formulario
+    # ======================
+    with st.form("form_servicio"):
 
-        cliente = st.selectbox("Cliente", clientes_map.keys())
-        tipo_servicio = st.selectbox("Tipo de servicio", tipos_map.keys())
+        cliente_nombre = st.selectbox(
+            "Cliente",
+            cliente_map.keys()
+        )
 
-        tipo_data = tipos_map[tipo_servicio]
-        tipo = tipo_data["tipo"]
+        tipo_nombre = st.selectbox(
+            "Tipo de servicio",
+            tipo_map.keys()
+        )
 
+        tipo_data = tipo_map[tipo_nombre]
+        tipo = tipo_data["tipo"]  # FIJO o MEDIDO
+
+        # ======================
+        # Lógica por tipo
+        # ======================
         if tipo == "FIJO":
-            st.info(f"Tarifa fija aplicada: ${tipo_data['tarifa_fija']}")
-            tarifa_fija = tipo_data["tarifa_fija"]
+            tarifa_fija = st.number_input(
+                "Tarifa fija",
+                value=float(tipo_data["tarifa_fija"]),
+                min_value=0.0
+            )
             precio_m3 = None
 
         elif tipo == "MEDIDO":
-            st.info(f"Precio por m³ aplicado: ${tipo_data['precio_m3']}")
+            precio_m3 = st.number_input(
+                "Precio por m³",
+                value=float(tipo_data["precio_m3"]),
+                min_value=0.0
+            )
             tarifa_fija = None
-            precio_m3 = tipo_data["precio_m3"]
-
-        fecha_inicio = st.date_input("Fecha de inicio")
 
         submitted = st.form_submit_button("Asignar servicio")
 
-        if submitted:
-            supabase.table("servicios").insert({
-                "cliente_id": clientes_map[cliente],
-                "tipo_servicio_id": tipo_data["id"],
-                "tipo": tipo,
-                "tarifa_fija": tarifa_fija,
-                "precio_m3": precio_m3,
-                "fecha_inicio": fecha_inicio,
-                "estado": "ACTIVO"
-            }).execute()
+    # ======================
+    # Procesamiento (FUERA del form)
+    # ======================
+    if submitted:
 
-            st.session_state["servicio_ok"] = True
+        nuevo_servicio = {
+            "cliente_id": cliente_map[cliente_nombre],
+            "tipo_servicio_id": tipo_data["id"],
+            "tipo": tipo,
+            "tarifa_fija": tarifa_fija,
+            "precio_m3": precio_m3,
+            "estado": "ACTIVO"
+        }
 
+        supabase.table("servicios").insert(nuevo_servicio).execute()
 
-    # --- Mensaje persistente ---
-    if st.session_state.get("servicio_ok"):
-        st.success("✅ Servicio asignado correctamente al cliente")
-        del st.session_state["servicio_ok"]
+        st.success("✅ Servicio asignado correctamente")
