@@ -207,19 +207,16 @@ elif st.session_state.menu == "Servicios":
     # Datos base
     # ======================
     clientes = supabase.table("clientes").select("id, nombre").execute().data
-    tipos_servicio = supabase.table("tipos_servicio").select("*").execute().data
-
-    if not clientes or not tipos_servicio:
-        st.warning("⚠️ Deben existir clientes y tipos de servicio")
-        st.stop()
+    tipos = supabase.table("tipos_servicio").select("*").execute().data
+    servicios = supabase.table("servicios_catalogo").select("*").execute().data
 
     cliente_map = {c["nombre"]: c for c in clientes}
-    tipo_map = {t["nombre"]: t for t in tipos_servicio}
+    tipo_map = {t["nombre"]: t for t in tipos}
 
     # ======================
     # FORM
     # ======================
-    with st.form("form_servicio"):
+    with st.form("form_asignar_servicio"):
 
         cliente_nombre = st.selectbox(
             "Cliente",
@@ -231,19 +228,16 @@ elif st.session_state.menu == "Servicios":
             list(tipo_map.keys())
         )
 
-        # 👇 DEFENSIVO: aún no asumimos que existe
-        tipo_actual = tipo_map.get(tipo_nombre, {}).get("tipo", "")
+        tipo_actual = tipo_map[tipo_nombre]["tipo"]
 
-        tarifa_fija = st.number_input(
-            "Tarifa fija",
-            min_value=0.0,
-            disabled=(tipo_actual != "FIJO")
-        )
+        # Filtrar catálogo según tipo
+        servicios_filtrados = [
+            s for s in servicios if s["tipo"] == tipo_actual
+        ]
 
-        precio_m3 = st.number_input(
-            "Precio por m³",
-            min_value=0.0,
-            disabled=(tipo_actual != "MEDIDO")
+        servicio_nombre = st.selectbox(
+            "Servicio",
+            [s["nombre"] for s in servicios_filtrados]
         )
 
         submitted = st.form_submit_button("Asignar servicio")
@@ -253,18 +247,17 @@ elif st.session_state.menu == "Servicios":
     # ======================
     if submitted:
 
-        tipo_data = tipo_map[tipo_nombre]
+        servicio_data = next(
+            s for s in servicios_filtrados if s["nombre"] == servicio_nombre
+        )
 
         nuevo_servicio = {
             "cliente_id": cliente_map[cliente_nombre]["id"],
-            "tipo_servicio_id": tipo_data["id"],
-            "tipo": tipo_data["tipo"],
-            "tarifa_fija": tarifa_fija if tipo_data["tipo"] == "FIJO" else None,
-            "precio_m3": precio_m3 if tipo_data["tipo"] == "MEDIDO" else None,
+            "servicio_catalogo_id": servicio_data["id"],
             "estado": "ACTIVO"
         }
 
-        supabase.table("servicios").insert(nuevo_servicio).execute()
+        supabase.table("servicios_clientes").insert(nuevo_servicio).execute()
         st.success("✅ Servicio asignado correctamente")
 
 
