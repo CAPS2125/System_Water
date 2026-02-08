@@ -127,3 +127,61 @@ if st.session_state.menu == "Clientes":
         columnas_presentes = [c for c in columnas_ui if c in df_clientes.columns]
         df_clientes = df_clientes[columnas_presentes]
         st.dataframe(df_clientes, use_container_width=True)
+
+# ======================================================
+# TIPO DE SERVICIO (MOCK)
+# ======================================================
+if st.session_state.menu == "Tipo de Servicio":
+    st.header("🧩 Tipos de Servicio")
+
+    tipos = supabase.table("tipos_servicio").select("*").eq("activo", True).execute().data
+    tipo_map = {t["nombre"]: t for t in tipos}
+
+    tipo_seleccionado = st.selectbox(
+        "Tipo de servicio",
+        options=tipo_map.keys()
+    )
+
+    tipo = tipo_map[tipo_seleccionado]
+
+    st.divider()
+
+    # =========================
+    # CATÁLOGO FIJO
+    # =========================
+    st.subheader("📌 Servicio fijo")
+
+    nombre_fijo = st.text_input(
+        "Nombre del servicio fijo",
+        disabled=not tipo["usa_catalogo_fijo"]
+    )
+
+    tarifa_fija = st.number_input(
+        "Tarifa fija",
+        min_value=0.0,
+        step=1.0,
+        disabled=not tipo["usa_catalogo_fijo"]
+    )
+
+    # =========================
+    # MEDIDOR
+    # =========================
+    st.subheader("📏 Servicio medido")
+
+    precio_m3 = st.number_input(
+        "Precio por m³",
+        min_value=0.0,
+        step=0.1,
+        disabled=not tipo["usa_medidor"]
+    )
+
+    # =========================
+    # MOCK SUBMIT
+    # =========================
+    if st.button("Guardar (mock)"):
+        st.success(
+            f"✔ Tipo seleccionado: {tipo_seleccionado}\n"
+            f"Fijo activo: {tipo['usa_catalogo_fijo']} | "
+            f"Medidor activo: {tipo['usa_medidor']}"
+        )
+
