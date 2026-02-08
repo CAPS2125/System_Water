@@ -305,6 +305,5 @@ elif st.session_state.menu == "Servicios":
             "fecha_final": fecha_inicio.isoformat()
         }
 
-        st.write("📦 Payload a insertar:", nuevo_servicio) 
-        supabase.table("servicios").insert(nuevo_servicio).execute() 
+        supabase.table("servicios").insert(nuevo_servicio).execute()
         st.success("✅ Servicio asignado correctamente al cliente")
