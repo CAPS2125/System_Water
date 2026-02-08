@@ -403,25 +403,25 @@ elif st.session_state.menu == "Pagos":
     st.header("💳 Registro de Pagos")
 
     # ======================
-    # CLIENTES CON SALDO
+    # CLIENTES CON DEUDA
     # ======================
-    ultimos_saldos = supabase.table("lecturas") \
-        .select("cliente_id, servicio_id, saldo_actual, clientes(nombre)") \
+    ultimas_lecturas = supabase.table("lecturas") \
+        .select("cliente_id, servicio_id, saldo_actual as deuda, clientes(nombre)") \
         .order("created_at", desc=True) \
         .execute().data
 
-    saldo_map = {}
-    for r in ultimos_saldos:
-        if r["cliente_id"] not in saldo_map:
-            saldo_map[r["cliente_id"]] = r
+    deuda_map = {}
+    for r in ultimas_lecturas:
+        if r["cliente_id"] not in deuda_map:
+            deuda_map[r["cliente_id"]] = r
 
-    if not saldo_map:
-        st.info("No hay clientes con saldo registrado")
+    if not deuda_map:
+        st.info("No hay clientes con deuda registrada")
         st.stop()
 
     cliente_map = {
         r["clientes"]["nombre"]: r
-        for r in saldo_map.values()
+        for r in deuda_map.values()
     }
 
     # ======================
@@ -434,9 +434,9 @@ elif st.session_state.menu == "Pagos":
             cliente_map.keys()
         )
 
-        # Definir saldo actual del cliente seleccionado
-        saldo_actual = cliente_map[cliente_nombre]["saldo_actual"]
-        st.info(f"Saldo actual del cliente: ${saldo_actual:.2f}")
+        # Deuda actual del cliente seleccionado
+        deuda_actual = cliente_map[cliente_nombre]["deuda"]
+        st.info(f"Deuda actual del cliente: ${deuda_actual:.2f}")
 
         meses = st.number_input(
             "Meses a pagar",
@@ -444,10 +444,12 @@ elif st.session_state.menu == "Pagos":
             step=1
         )
 
-        # Calcular monto automáticamente según meses
-        tarifa_mensual = saldo_actual / max(meses, 1)
-        monto_pagado = tarifa_mensual * meses
-        st.write(f"Monto a pagar calculado: ${monto_pagado:.2f}")
+        monto_pagado = st.number_input(
+            "Monto a pagar",
+            min_value=0.0,
+            max_value=deuda_actual,
+            value=deuda_actual / meses  # sugerencia inicial por mes
+        )
 
         metodo = st.selectbox(
             "Método de pago",
@@ -461,13 +463,14 @@ elif st.session_state.menu == "Pagos":
     # ======================
     if submitted:
         data = cliente_map[cliente_nombre]
-        saldo_anterior = data["saldo_actual"]
+        deuda_anterior = data["deuda"]
 
-        # Validar que no se pague más del saldo
-        if monto_pagado > saldo_anterior:
-            st.error("El monto a pagar no puede ser mayor al saldo actual.")
+        if monto_pagado <= 0:
+            st.error("El monto a pagar debe ser mayor a 0.")
+        elif monto_pagado > deuda_anterior:
+            st.error("No se puede pagar más que la deuda actual.")
         else:
-            nuevo_saldo = saldo_anterior - monto_pagado
+            nueva_deuda = deuda_anterior - monto_pagado
 
             nuevo_pago = {
                 "cliente_id": data["cliente_id"],
@@ -475,11 +478,14 @@ elif st.session_state.menu == "Pagos":
                 "fecha_pago": date.today().isoformat(),
                 "meses_pagados": meses,
                 "monto_pagado": monto_pagado,
-                "saldo_anterior": saldo_anterior,
-                "saldo_actual": nuevo_saldo,
+                "saldo_anterior": deuda_anterior,
+                "saldo_actual": nueva_deuda,  # opcional para registrar en pagos
                 "metodo_pago": metodo
             }
 
             supabase.table("pagos").insert(nuevo_pago).execute()
 
-            st.success(f"✅ Pago registrado. Nuevo saldo: ${nuevo_saldo:.2f}")
+            st.success(f"✅ Pago registrado. Deuda restante: ${nueva_deuda:.2f}")
+
+            # Si quieres, también puedes actualizar la deuda en la tabla lecturas:
+            supabase.table("lecturas").update({"saldo_actual": nueva_deuda}).eq("cliente_id", data["cliente_id"]).execute()
