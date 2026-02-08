@@ -291,7 +291,7 @@ elif st.session_state.menu == "Servicios":
             "tipo_servicio_id": tipo_actual["id"],
             "servicio_catalogo_id": servicio_actual["id"],
             "tipo": tipo_actual["nombre"],
-            "tarifa_fija": servicio_actual["tarifa"] if tipo_actual["usa_catalogo_fijo"] else None,
+            "tarifa_fija": servicio_actual["tarifa_fija"] if tipo_actual["usa_catalogo_fijo"] else None,
             "precio_m3": servicio_actual["precio_m3"] if tipo_actual["usa_medidor"] else None,
             "estado": "ACTIVO"
         }
