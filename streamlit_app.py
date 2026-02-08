@@ -297,5 +297,6 @@ elif st.session_state.menu == "Servicios":
         }
 
         supabase.table("servicios").insert(nuevo_servicio).execute()
+        st.write("📦 Payload a insertar:", nuevo_servicio)
 
         st.success("✅ Servicio asignado correctamente al cliente")
