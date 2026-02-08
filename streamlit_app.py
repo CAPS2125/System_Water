@@ -305,18 +305,18 @@ elif st.session_state.menu == "Servicios":
             "fecha_final": fecha_inicio.isoformat()
         }
 
-        with st.dialog("📦 Confirmar asignación de servicio"):
+    with st.dialog("📦 Confirmar asignación de servicio"):
 
-            st.markdown("### Revisa la información antes de guardar")
-            st.json(payload)
+        st.markdown("### Revisa la información antes de guardar")
+        st.json(payload)
 
-            col1, col2 = st.columns(2)
+        col1, col2 = st.columns(2)
 
-            with col1:
-                if st.button("❌ Cancelar"):
-                    st.stop()
+        with col1:
+            if st.button("❌ Cancelar"):
+                st.stop()
 
-            with col2:
-                if st.button("✅ Confirmar"):
-                    supabase.table("servicios").insert(payload).execute()
-                    st.success("Servicio asignado correctamente")
+        with col2:
+            if st.button("✅ Confirmar"):
+                supabase.table("servicios").insert(payload).execute()
+                st.success("Servicio asignado correctamente")
