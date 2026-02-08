@@ -204,7 +204,7 @@ elif st.session_state.menu == "Servicios":
 
     # --- Cargar datos ---
     clientes = supabase.table("clientes").select("id, nombre").execute().data
-    tipos = supabase.table("tipo_servicios").select("*").execute().data
+    tipos = supabase.table("tipos_servicio").select("*").execute().data
 
     clientes_map = {c["nombre"]: c["id"] for c in clientes}
     tipos_map = {t["nombre"]: t for t in tipos}
