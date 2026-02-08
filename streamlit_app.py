@@ -207,7 +207,7 @@ elif st.session_state.menu == "Servicios":
     # ======================
     clientes = supabase.table("clientes").select("id, nombre").execute().data
     tipos_servicio = supabase.table("tipos_servicio").select("*").execute().data
-    catalogo = supabase.table("servicios_catalogo").select("*").execute().data
+    catalogo = supabase.table("catalogo_servicios").select("*").execute().data
 
     if not clientes:
         st.warning("No hay clientes registrados")
