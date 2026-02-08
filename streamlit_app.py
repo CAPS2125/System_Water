@@ -396,3 +396,84 @@ elif st.session_state.menu == "Lecturas":
 
         st.success(f"✅ Lectura registrada. Importe: ${importe:.2f}")
 
+# ======================================================
+# PAGOS
+# ======================================================
+elif st.session_state.menu == "Pagos":
+    st.header("💳 Registro de Pagos")
+
+    # ======================
+    # CLIENTES CON SALDO
+    # ======================
+    ultimos_saldos = supabase.table("lecturas") \
+        .select("cliente_id, servicio_id, saldo_actual, clientes(nombre)") \
+        .order("created_at", desc=True) \
+        .execute().data
+
+    saldo_map = {}
+    for r in ultimos_saldos:
+        if r["cliente_id"] not in saldo_map:
+            saldo_map[r["cliente_id"]] = r
+
+    if not saldo_map:
+        st.info("No hay clientes con saldo registrado")
+        st.stop()
+
+    cliente_map = {
+        r["clientes"]["nombre"]: r
+        for r in saldo_map.values()
+    }
+
+    # ======================
+    # FORMULARIO
+    # ======================
+    with st.form("form_pago"):
+
+        cliente_nombre = st.selectbox(
+            "Cliente",
+            cliente_map.keys()
+        )
+
+        meses = st.number_input(
+            "Meses a pagar",
+            min_value=1,
+            step=1
+        )
+
+        metodo = st.selectbox(
+            "Método de pago",
+            ["EFECTIVO", "TRANSFERENCIA", "TARJETA"]
+        )
+
+        submitted = st.form_submit_button("Registrar pago")
+
+    # ======================
+    # LÓGICA
+    # ======================
+    if submitted:
+
+        data = cliente_map[cliente_nombre]
+        saldo_anterior = data["saldo_actual"]
+
+        # Supuesto: tarifa mensual promedio
+        tarifa_mensual = saldo_anterior / max(meses, 1)
+        monto_pagado = tarifa_mensual * meses
+
+        saldo_actual = max(saldo_anterior - monto_pagado, 0)
+
+        nuevo_pago = {
+            "cliente_id": data["cliente_id"],
+            "servicio_id": data["servicio_id"],
+            "fecha_pago": date.today().isoformat(),
+            "meses_pagados": meses,
+            "monto_pagado": monto_pagado,
+            "saldo_anterior": saldo_anterior,
+            "saldo_actual": saldo_actual,
+            "metodo_pago": metodo
+        }
+
+        supabase.table("pagos").insert(nuevo_pago).execute()
+
+        st.success(
+            f"✅ Pago registrado. Saldo actual: ${saldo_actual:.2f}"
+        )
