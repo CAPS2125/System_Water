@@ -134,59 +134,42 @@ if st.session_state.menu == "Clientes":
 elif st.session_state.menu == "Tipo de Servicio":
     st.header("🧾 Tipo de Servicio (Catálogo)")
 
-    tab_fijo, tab_medido = st.tabs(["🔒 Servicios Fijos", "📏 Servicios Medidos"])
+    with st.form("nuevo_servicio"):
+    tipo = st.selectbox("Tipo", ["FIJO", "MEDIDO"])
 
-    # =========================
-    # FIJOS
-    # =========================
-    with tab_fijo:
-        st.subheader("Agregar servicio fijo")
+    servicio_fijo = None
+    servicio_medido = None
 
-        nombre_fijo = st.text_input("Nombre del servicio fijo")
-        tarifa_fija = st.number_input("Tarifa fija", min_value=0.0)
+    if tipo == "FIJO":
+        servicio_fijo = st.selectbox("Servicio fijo", fijo_map.keys())
+        tarifa_fija = st.number_input("Tarifa", min_value=0.0)
 
-        if st.button("Agregar servicio fijo"):
-            if not nombre_fijo:
-                st.error("❌ El nombre es obligatorio")
-            else:
-                supabase.table("catalogo_servicios_fijos").insert({
-                    "nombre": nombre_fijo,
-                    "tarifa": tarifa_fija,
-                    "activo": True
-                }).execute()
-                st.success("✅ Servicio fijo agregado")
-                st.rerun()
+    if tipo == "MEDIDO":
+        servicio_medido = st.selectbox("Precio por m³", medidor_map.keys())
 
-        st.divider()
+    submitted = st.form_submit_button("Agregar servicio")
 
-        data_fijo = supabase.table("catalogo_servicios_fijos").select("*").execute().data
-        if data_fijo:
-            st.dataframe(pd.DataFrame(data_fijo), use_container_width=True)
-        else:
-            st.info("No hay servicios fijos registrados")
+if submitted:
+    payload = {
+        "cliente_id": cliente_id,
+        "nombre_servicio": nombre_servicio,
+        "tipo_servicio": tipo,
+        "estado": "Vigente"
+    }
 
-    # =========================
-    # MEDIDOS
-    # =========================
-    with tab_medido:
-        st.subheader("Precio por m³")
+    if tipo == "FIJO":
+        payload.update({
+            "catalogo_fijo_id": fijo_map[servicio_fijo]["id"],
+            "tarifa": tarifa_fija
+        })
 
-        precio_m3 = st.number_input("Precio por metro cúbico", min_value=0.0)
+    if tipo == "MEDIDO":
+        payload.update({
+            "catalogo_medidor_id": medidor_map[servicio_medido]["id"],
+            "tarifa": medidor_map[servicio_medido]["precio_m3"]
+        })
 
-        if st.button("Agregar precio m³"):
-            supabase.table("catalogo_medidor").insert({
-                "precio_m3": precio_m3
-            }).execute()
-            st.success("✅ Precio agregado")
-            st.rerun()
-
-        st.divider()
-
-        data_medidor = supabase.table("catalogo_medidor").select("*").execute().data
-        if data_medidor:
-            st.dataframe(pd.DataFrame(data_medidor), use_container_width=True)
-        else:
-            st.info("No hay precios registrados")
+    supabase.table("servicios").insert(payload).execute()
 
 # ======================================================
 # SERVICIOS
