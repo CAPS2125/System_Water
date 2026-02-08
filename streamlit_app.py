@@ -305,7 +305,18 @@ elif st.session_state.menu == "Servicios":
             "fecha_final": fecha_inicio.isoformat()
         }
 
-        st.write("📦 Payload a insertar:", nuevo_servicio)
-        supabase.table("servicios").insert(nuevo_servicio).execute()
+        with st.dialog("📦 Confirmar asignación de servicio"):
 
-        st.success("✅ Servicio asignado correctamente al cliente")
+            st.markdown("### Revisa la información antes de guardar")
+            st.json(payload)
+
+            col1, col2 = st.columns(2)
+
+            with col1:
+                if st.button("❌ Cancelar"):
+                    st.stop()
+
+            with col2:
+                if st.button("✅ Confirmar"):
+                    supabase.table("servicios").insert(payload).execute()
+                    st.success("Servicio asignado correctamente")
