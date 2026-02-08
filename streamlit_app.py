@@ -196,3 +196,56 @@ elif st.session_state.menu == "Tipo de Servicios":
                 st.success("✅ Tipo de servicio registrado correctamente")
                 st.toast("Servicio guardado con éxito", icon="🎉")
 
+# ======================================================
+# TIPO DE SERVICIOS
+# ======================================================
+elif st.session_state.menu == "Servicios":
+    st.header("🧾 Asignar Servicio a Cliente")
+
+    # --- Cargar datos ---
+    clientes = supabase.table("clientes").select("id, nombre").execute().data
+    tipos = supabase.table("tipo_servicios").select("*").execute().data
+
+    clientes_map = {c["nombre"]: c["id"] for c in clientes}
+    tipos_map = {t["nombre"]: t for t in tipos}
+
+    with st.form("servicio_form"):
+
+        cliente = st.selectbox("Cliente", clientes_map.keys())
+        tipo_servicio = st.selectbox("Tipo de servicio", tipos_map.keys())
+
+        tipo_data = tipos_map[tipo_servicio]
+        tipo = tipo_data["tipo"]
+
+        if tipo == "FIJO":
+            st.info(f"Tarifa fija aplicada: ${tipo_data['tarifa_fija']}")
+            tarifa_fija = tipo_data["tarifa_fija"]
+            precio_m3 = None
+
+        elif tipo == "MEDIDO":
+            st.info(f"Precio por m³ aplicado: ${tipo_data['precio_m3']}")
+            tarifa_fija = None
+            precio_m3 = tipo_data["precio_m3"]
+
+        fecha_inicio = st.date_input("Fecha de inicio")
+
+        submitted = st.form_submit_button("Asignar servicio")
+
+        if submitted:
+            supabase.table("servicios").insert({
+                "cliente_id": clientes_map[cliente],
+                "tipo_servicio_id": tipo_data["id"],
+                "tipo": tipo,
+                "tarifa_fija": tarifa_fija,
+                "precio_m3": precio_m3,
+                "fecha_inicio": fecha_inicio,
+                "estado": "ACTIVO"
+            }).execute()
+
+            st.session_state["servicio_ok"] = True
+
+
+    # --- Mensaje persistente ---
+    if st.session_state.get("servicio_ok"):
+        st.success("✅ Servicio asignado correctamente al cliente")
+        del st.session_state["servicio_ok"]
