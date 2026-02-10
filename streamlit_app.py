@@ -76,6 +76,16 @@ with col1:
         if not nombre or not codigo:
             st.error("Nombre y código son obligatorios")
         else:
+            st.write({
+                "nombre": nombre,
+                "codigo": codigo,
+                "telefono": telefono,
+                "correo": correo,
+                "calle": calle,
+                "lote": lote,
+                "manzana": manzana,
+                "tipo_cobro": tipo_cobro
+            })
             supabase.table("cliente").insert({
                 "nombre": nombre,
                 "codigo": codigo,
@@ -86,6 +96,8 @@ with col1:
                 "manzana": manzana,
                 "tipo_cobro": tipo_cobro
             }).execute()
+
+            
 
             st.success("✅ Cliente registrado")
             st.rerun()
