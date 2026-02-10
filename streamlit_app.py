@@ -41,7 +41,8 @@ with col1:
         manzana = st.text_input("Manzana")
         
         tipo_cobro = st.selectbox("Tipo de cobro", ["Fijo", "Medidor"])
-        
+
+        st.write(tipo_cobro)
         tarifa = st.number_input(
             "Tarifa fija mensual (solo si es Fijo)",
             min_value=0.0,
