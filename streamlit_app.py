@@ -61,39 +61,3 @@ with col1:
 
             st.success("Cliente registrado correctamente")
             st.rerun()
-
-# ======================================================
-# COLUMNA 2 — TABLA CLIENTES + JOIN
-# ======================================================
-with col2:
-    st.subheader("📊 Clientes y Datos Asociados")
-
-    clientes_data = supabase.table("cliente") \
-        .select("""
-            id,
-            nombre,
-            codigo,
-            telefono,
-            tipo_cobro,
-            lectura(
-                lectura_i,
-                lectura_a,
-                metros,
-                created_at
-            ),
-            fijo(
-                tarifa
-            ),
-            estado(
-                estatus
-            )
-        """) \
-        .order("id") \
-        .execute().data
-
-    df = pd.json_normalize(clientes_data)
-
-    if df.empty:
-        st.info("No hay clientes registrados")
-    else:
-        st.dataframe(df, use_container_width=True)
