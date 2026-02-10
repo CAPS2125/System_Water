@@ -40,16 +40,14 @@ with col1:
         lote = st.text_input("Lote")
         manzana = st.text_input("Manzana")
         
-        tipo_cobro = st.selectbox("Tipo de cobro", ["Fijo", "Medidor"], key="tipo de cobro")
-        st.write(st.session_state.tipo_cobro)
+        tipo_cobro = st.selectbox("Tipo de cobro", ["Fijo", "Medidor"])
         
-        tarifa = None
-        if st.session_state.tipo_cobro == "Fijo":
-            tarifa = st.number_input(
-                "Tarifa fija mensual",
-                min_value=0.0,
-                step=10.0
-            )
+        tarifa = st.number_input(
+            "Tarifa fija mensual (solo si es Fijo)",
+            min_value=0.0,
+            step=10.0,
+            disabled=(tipo_cobro != "Fijo")
+        )
         
         guardar = st.form_submit_button("Guardar")
 
