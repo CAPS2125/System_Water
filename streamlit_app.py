@@ -42,6 +42,8 @@ with col1:
         manzana = st.text_input("Manzana")
         
         tarifa = None
+        precio_m = None
+        lecturas = None
         if tipo_cobro == "Fijo":
             tarifa = st.number_input("Tarifa fija mensual (solo si es Fijo)", min_value=0, step=10.0)
         elif tipo_cobro == "Medidor":
