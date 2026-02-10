@@ -68,6 +68,7 @@ with col1:
 
             st.write(res)
             cliente_id = res.data[0]["id"]
+            st.write(cliente_id)
 
             # Si es fijo, inicializar tarifa
             if tipo_cobro == "Fijo" and tarifa is not None:
