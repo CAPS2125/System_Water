@@ -72,7 +72,7 @@ with col1:
             # Si es fijo, inicializar tarifa
             if tipo_cobro == "Fijo" and tarifa is not None:
                 supabase.table("fijo").insert({
-                    "cliente_id": cliente_id,
+                    "client_id": cliente_id,
                     "Tarifa": tarifa
                 }).execute()
 
