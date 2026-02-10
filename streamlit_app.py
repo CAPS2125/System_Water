@@ -79,7 +79,12 @@ with col2:
     .select("""
         nombre,
         codigo,
-        tipo_cobro
+        tipo_cobro,
+        estado(
+            estatus,
+            saldo,
+            adeudo
+        )
         """).execute().data
     df = pd.DataFrame(clientes)
     st.dataframe(df, use_container_width=True)
