@@ -72,14 +72,14 @@ with col1:
             # 2️⃣ Inicializar estado
             supabase.table("estado").insert({
                 "cliente_id": cliente_id,
-                "estatus": "ACTIVO"
+                "estatus": "Activo"
             }).execute()
 
             # 3️⃣ Si es fijo, inicializar tarifa
             if tipo_cobro == "Fijo" and tarifa is not None:
                 supabase.table("fijo").insert({
                     "cliente_id": cliente_id,
-                    "tarifa": tarifa
+                    "Tarifa": tarifa
                 }).execute()
 
             st.success("Cliente creado correctamente")
