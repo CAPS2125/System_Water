@@ -42,6 +42,14 @@ with col1:
 
         tipo_cobro = st.selectbox("Tipo de cobro", ["Fijo", "Medidor"])
 
+        tarifa = None
+        if tipo_cobro == "Fijo":
+            tarifa = st.number_input(
+                "Tarifa fija mensual",
+                min_value=0.0,
+                step=10.0
+        )
+        
         guardar = st.form_submit_button("Guardar")
 
     if guardar:
