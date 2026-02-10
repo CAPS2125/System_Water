@@ -19,7 +19,7 @@ st.title("📋 Tabla de Clientes")
 
 # --- Consulta simple ---
 response = supabase.table("cliente").select("*").execute()
-
+st.write(response)
 data = response.data if response.data else []
 
 # --- Convertir a DataFrame ---
