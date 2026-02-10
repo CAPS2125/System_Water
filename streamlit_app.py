@@ -43,11 +43,9 @@ with col1:
         
         tarifa = None
         if tipo_cobro == "Fijo":
-            tarifa = st.number_input(
-                "Tarifa fija mensual (solo si es Fijo)",
-                min_value=0.0,
-                step=10.0
-            )
+            tarifa = st.number_input("Tarifa fija mensual (solo si es Fijo)", min_value=0, step=10.0)
+        else tipo_cobro == "Medidor":
+            precio_m = st.number_input("Precio x M cubico", min_value=0, step=10)
         
         guardar = st.form_submit_button("Guardar")
 
@@ -66,10 +64,11 @@ with col1:
                 "tipo_cobro": tipo_cobro
             }).execute()
 
-            st.write(res)
             cliente_id = res.data[0]["id"]
-            st.write(cliente_id)
 
+            # 2. Insertar estado (SIEMPRE)
+            supabase.table("Estado").insert({"estatus": "activo", "client_id": cliente_id, "saldo": 0, "adeudo": 0}).execute()
+            
             # Si es fijo, inicializar tarifa
             if tipo_cobro == "Fijo" and tarifa is not None:
                 supabase.table("fijo").insert({
