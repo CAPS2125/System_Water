@@ -1,6 +1,6 @@
 import streamlit as st
 import pandas as pd
-from supabase import create_clienthttps://github.com/CAPS2125/System_Water/edit/main/streamlit_app.py
+from supabase import create_client
 
 # ======================================================
 # CONFIG STREAMLIT
