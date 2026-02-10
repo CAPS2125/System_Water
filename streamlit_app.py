@@ -16,7 +16,7 @@ SUPABASE_KEY = st.secrets["supabase_anon_key"]
 supabase = create_client(SUPABASE_URL, SUPABASE_KEY)
 
 # ======================================================
-# CONSULTA CLIENTES (JOIN)
+# CONSULTA CLIENTES
 # ======================================================
 clientes_data = supabase.table("cliente") \
     .select("""
@@ -24,6 +24,10 @@ clientes_data = supabase.table("cliente") \
         nombre,
         codigo,
         telefono,
+        correo,
+        calle,
+        lote,
+        manzana,
         tipo_cobro,
         Lectura(
             lectura_i,
@@ -48,7 +52,7 @@ clientes_map = {c["nombre"]: c for c in clientes_data} if clientes_data else {}
 col1, col2 = st.columns([1, 2])
 
 # ======================================================
-# COLUMNA 1 – CAPTURA CLIENTE
+# COLUMNA 1 – ALTA + SELECCIÓN
 # ======================================================
 with col1:
     st.subheader("➕ Alta de cliente")
@@ -57,6 +61,13 @@ with col1:
         nombre = st.text_input("Nombre del cliente")
         codigo = st.text_input("Código")
         telefono = st.text_input("Teléfono")
+        correo = st.text_input("Correo electrónico")
+
+        st.markdown("**Dirección**")
+        calle = st.text_input("Calle")
+        lote = st.text_input("Lote")
+        manzana = st.text_input("Manzana")
+
         tipo_cobro = st.selectbox("Tipo de cobro", ["FIJO", "VARIABLE"])
 
         guardar = st.form_submit_button("Guardar cliente")
@@ -69,6 +80,10 @@ with col1:
                 "nombre": nombre,
                 "codigo": codigo,
                 "telefono": telefono,
+                "correo": correo,
+                "calle": calle,
+                "lote": lote,
+                "manzana": manzana,
                 "tipo_cobro": tipo_cobro
             }).execute()
 
@@ -86,8 +101,8 @@ with col1:
         )
         cliente = clientes_map[cliente_nombre]
     else:
-        st.info("Aún no hay clientes")
         cliente = None
+        st.info("Aún no hay clientes")
 
 # ======================================================
 # COLUMNA 2 – VISTA CONSOLIDADA
