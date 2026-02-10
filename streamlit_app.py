@@ -48,7 +48,7 @@ with col1:
                 "Tarifa fija mensual",
                 min_value=0.0,
                 step=10.0
-        )
+            )
         
         guardar = st.form_submit_button("Guardar")
 
