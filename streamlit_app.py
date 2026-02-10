@@ -29,7 +29,7 @@ col1, col2 = st.columns([1, 2])
 with col1:
     st.subheader("➕ Alta de Cliente")
 
-    with st.form("form_cliente"):
+    with st.form("form_cliente", clear_on_submit=True):
         nombre = st.text_input("Nombre *")
         codigo = st.text_input("Código *")
         telefono = st.text_input("Teléfono")
