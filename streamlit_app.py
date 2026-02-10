@@ -62,7 +62,12 @@ with col1:
             st.success("Cliente registrado correctamente")
             st.rerun()
 with col2:
-    clientes = supabase.table("cliente").select("*").execute().data
+    clientes = supabase.table("cliente") \
+    .select("""
+        nombre,
+        codigo,
+        tipo_cobro
+        """).execute().data
     df = pd.DataFrame(clientes)
     st.dataframe(df, use_container_width=True)
 
