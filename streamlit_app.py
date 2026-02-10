@@ -44,7 +44,7 @@ with col1:
         tarifa = None
         if tipo_cobro == "Fijo":
             tarifa = st.number_input("Tarifa fija mensual (solo si es Fijo)", min_value=0, step=10.0)
-        else tipo_cobro == "Medidor":
+        else: tipo_cobro == "Medidor":
             precio_m = st.number_input("Precio x M cubico", min_value=0, step=10)
         
         guardar = st.form_submit_button("Guardar")
