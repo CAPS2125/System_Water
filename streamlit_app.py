@@ -39,9 +39,9 @@ with col1:
         calle = st.text_input("Calle")
         lote = st.text_input("Lote")
         manzana = st.text_input("Manzana")
-
+        
         tipo_cobro = st.selectbox("Tipo de cobro", ["Fijo", "Medidor"])
-
+        st.write(tipo_cobro)
         tarifa = None
         if tipo_cobro == "Fijo":
             tarifa = st.number_input(
