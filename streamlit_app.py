@@ -5,8 +5,7 @@ from supabase import create_client
 # ======================================================
 # CONFIG STREAMLIT
 # ======================================================
-st.set_page_config(page_title="Sistema de Clientes", layout="wide")
-st.title("💧 Sistema de Clientes – Vista General")
+st.set_page_config(page_title="Padre Kino", layout="wide")
 
 # ======================================================
 # CONEXIÓN SUPABASE
@@ -41,12 +40,9 @@ with col1:
         lote = st.text_input("Lote")
         manzana = st.text_input("Manzana")
         
-        tarifa = None
-        precio_m = None
-        lecturas = None
         if tipo_cobro == "Fijo":
             tarifa = st.number_input("Tarifa fija mensual (solo si es Fijo)", min_value=0, step=10.0)
-        elif tipo_cobro == "Medidor":
+        if tipo_cobro == "Medidor":
             precio_m = st.number_input("Precio x M cubico", min_value=0, step=10)
             lecturas = st.number_input("Lectura Actual", min_value=0, step=10)
         
