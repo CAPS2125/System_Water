@@ -41,7 +41,6 @@ with col1:
         lote = st.text_input("Lote")
         manzana = st.text_input("Manzana")
         
-        st.write(tipo_cobro)
         tarifa = None
         if tipo_cobro == "Fijo":
             tarifa = st.number_input(
@@ -67,6 +66,7 @@ with col1:
                 "tipo_cobro": tipo_cobro
             }).execute()
 
+            st.write(res)
             cliente_id = res.data[0]["id"]
 
             # 2️⃣ Inicializar estado
