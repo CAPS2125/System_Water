@@ -1,6 +1,6 @@
 import streamlit as st
 import pandas as pd
-from supabase import create_client
+from supabase import create_clienthttps://github.com/CAPS2125/System_Water/edit/main/streamlit_app.py
 
 # ======================================================
 # CONFIG STREAMLIT
@@ -44,8 +44,9 @@ with col1:
         tarifa = None
         if tipo_cobro == "Fijo":
             tarifa = st.number_input("Tarifa fija mensual (solo si es Fijo)", min_value=0, step=10.0)
-        else:
+        elif tipo_cobro == "Medidor":
             precio_m = st.number_input("Precio x M cubico", min_value=0, step=10)
+            precio_m = st.number_input("Lectura Actual", min_value=0, step=10)
         
         guardar = st.form_submit_button("Guardar")
 
