@@ -65,10 +65,10 @@ with col1:
 
         st.markdown("**Dirección**")
         calle = st.text_input("Calle")
-        lote = st.text_input("Lote")
-        manzana = st.text_input("Manzana")
+        lote = st.number_input("Lote")
+        manzana = st.number_input("Manzana")
 
-        tipo_cobro = st.selectbox("Tipo de cobro", ["FIJO", "VARIABLE"])
+        tipo_cobro = st.selectbox("Tipo de cobro", ["Fijo", "Medidor"])
 
         guardar = st.form_submit_button("Guardar cliente")
 
