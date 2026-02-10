@@ -31,16 +31,16 @@ clientes_data = supabase.table("cliente") \
         codigo,
         telefono,
         tipo_cobro,
-        lectura(
+        Lectura(
             lectura_i,
             lectura_a,
             metros,
             created_at
         ),
-        fijo(
-            tarifa
+        Fijo(
+            Tarifa
         ),
-        estado(
+        Estado(
             estatus
         )
     """) \
