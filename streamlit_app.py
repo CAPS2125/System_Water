@@ -40,10 +40,11 @@ with col1:
         lote = st.text_input("Lote")
         manzana = st.text_input("Manzana")
         
-        tipo_cobro = st.selectbox("Tipo de cobro", ["Fijo", "Medidor"])
-        st.write(tipo_cobro)
+        tipo_cobro = st.selectbox("Tipo de cobro", ["Fijo", "Medidor"], key="tipo de cobro")
+        st.write(st.session_state.tipo_cobro)
+        
         tarifa = None
-        if tipo_cobro == "Fijo":
+        if st.session_state.tipo_cobro == "Fijo":
             tarifa = st.number_input(
                 "Tarifa fija mensual",
                 min_value=0.0,
