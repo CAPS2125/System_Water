@@ -55,7 +55,7 @@ with col1:
         if not nombre or not codigo:
             st.error("Nombre y código son obligatorios")
         else:
-            supabase.table("cliente").insert({
+            res = supabase.table("cliente").insert({
                 "nombre": nombre,
                 "codigo": codigo,
                 "telefono": telefono,
