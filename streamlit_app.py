@@ -29,6 +29,7 @@ col1, col2 = st.columns([1, 2])
 with col1:
     st.subheader("➕ Alta de Cliente")
 
+    tipo_cobro = st.selectbox("Tipo de cobro", ["Fijo", "Medidor"])
     with st.form("form_cliente", clear_on_submit=True):
         nombre = st.text_input("Nombre *")
         codigo = st.text_input("Código *")
@@ -40,15 +41,14 @@ with col1:
         lote = st.text_input("Lote")
         manzana = st.text_input("Manzana")
         
-        tipo_cobro = st.selectbox("Tipo de cobro", ["Fijo", "Medidor"])
-
         st.write(tipo_cobro)
-        tarifa = st.number_input(
-            "Tarifa fija mensual (solo si es Fijo)",
-            min_value=0.0,
-            step=10.0,
-            disabled=(tipo_cobro != "Fijo")
-        )
+        tarifa = None
+        if tipo_cobro == "Fijo":
+            tarifa = st.number_input(
+                "Tarifa fija mensual (solo si es Fijo)",
+                min_value=0.0,
+                step=10.0
+            )
         
         guardar = st.form_submit_button("Guardar")
 
