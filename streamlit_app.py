@@ -80,6 +80,6 @@ with col2:
         nombre,
         codigo,
         tipo_cobro
-        """).execute().data
+        """).execute().data()
     df = pd.DataFrame(clientes)
     st.dataframe(df, use_container_width=True)
