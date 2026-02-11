@@ -91,7 +91,7 @@ with col2:
             "Nombre": c["nombre"],
             "Código": c["codigo"],
             "Tipo": c["tipo_cobro"],
-            "Estatus": c["estado"]["estatus"] if c["estado"] else None,
+            "estatus": c["estado"]["estatus"] if c["estado"] else None,
             "Saldo": c["estado"]["saldo"] if c["estado"] else 0,
             "Adeudo": c["estado"]["adeudo"] if c["estado"] else 0
         }
