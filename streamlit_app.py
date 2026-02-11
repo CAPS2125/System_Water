@@ -71,7 +71,7 @@ with col1:
             # Si es fijo, inicializar tarifa
             if tipo_cobro == "Fijo" and tarifa is not None:
                 supabase.table("fijo").insert({"clientid": cliente_id, "Tarifa": tarifa}).execute()
-            elif tipo_cobro == "Medidor" and ((precio_m is not None) and (lecturas is not None)):
+            elif tipo_cobro == "Medidor" and ((precio_m is not None) and (lectura_i is not None)):
                 supabase.table("lectura").insert({"clientid": cliente_id, "precio_m": precio_m, "lectura_i": lectura_i, "lectura_a": lectura_i}).execute()
 
             st.success("Cliente creado correctamente")
