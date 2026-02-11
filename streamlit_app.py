@@ -44,7 +44,7 @@ with col1:
             tarifa = st.number_input("Tarifa fija mensual (solo si es Fijo)", min_value=0.0, step=10.0)
         elif tipo_cobro == "Medidor":
             precio_m = st.number_input("Precio x M cubico", min_value=0, step=10)
-            lecturas = st.number_input("Lectura Actual", min_value=0, step=10)
+            lectura_i = st.number_input("Lectura Actual", min_value=0, step=10)
         
         guardar = st.form_submit_button("Guardar")
 
@@ -71,6 +71,8 @@ with col1:
             # Si es fijo, inicializar tarifa
             if tipo_cobro == "Fijo" and tarifa is not None:
                 supabase.table("fijo").insert({"clientid": cliente_id, "Tarifa": tarifa}).execute()
+            elif tipo_cobro == "Medidor" and ((precio_m is not None) and (lecturas is not None)):
+                supabase.table("lectura").insert({"clientid": cliente_id, "precio_m": precio_m, "lectura_i": lectura_i, "lectura_a": lectura_i}).execute()
 
             st.success("Cliente creado correctamente")
             st.rerun()
