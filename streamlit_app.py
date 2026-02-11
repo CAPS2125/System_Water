@@ -79,22 +79,7 @@ with col2:
     .select("""
         nombre,
         codigo,
-        tipo_cobro,
-        estado(
-            estatus,
-            saldo,
-            adeudo
-        )
+        tipo_cobro
         """).execute().data
-    df = pd.DataFrame([
-        {
-            "Nombre": c["nombre"],
-            "Código": c["codigo"],
-            "Tipo": c["tipo_cobro"],
-            "estatus": c["estado"]["estatus"] if c["estado"] else None,
-            "Saldo": c["estado"]["saldo"] if c["estado"] else 0,
-            "Adeudo": c["estado"]["adeudo"] if c["estado"] else 0
-        }
-        for c in clientes
-    ])
+    df = pd.DataFrame(clientes)
     st.dataframe(df, use_container_width=True)
