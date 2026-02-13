@@ -23,17 +23,27 @@ def obtener_cliente(codigo):
     return response.data[0] if response.data else None
 
 def calcular_saldo(cliente_id):
-    response = supabase.table("pagos") \
-        .select("cargo_generado, pago_realizado") \
-        .eq("clientid", cliente_id) \
-        .execute()
+    try:
+        response = (
+            supabase
+            .table("pagos")
+            .select("cargo_generado, pago_realizado")
+            .eq("clientid", cliente_id)
+            .execute()
+        )
 
-    movimientos = response.data or []
+        if not response.data:
+            return 0.0
 
-    total_cargos = sum(m.get("cargo_generado", 0) or 0 for m in movimientos)
-    total_pagos = sum(m.get("pago_realizado", 0) or 0 for m in movimientos)
+        total_cargos = sum(p.get("cargo_generado", 0) or 0 for p in response.data)
+        total_pagos = sum(p.get("pago_realizado", 0) or 0 for p in response.data)
 
-    return total_cargos - total_pagos
+        saldo = float(total_cargos) - float(total_pagos)
+        return round(saldo, 2)
+
+    except Exception as e:
+        print("Error en calcular_saldo:", e)
+        return 0.0
 
 # =========================
 # DIALOG PRINCIPAL
@@ -103,12 +113,14 @@ def render_medidor(cliente):
 # COBRO TARIFA FIJA (MOCK)
 # =========================
 
+from datetime import date
+
 def render_fijo(cliente):
     st.subheader("COBRO TARIFA FIJA")
 
     meses = st.number_input("Meses a pagar", min_value=1, value=1)
 
-    # Obtener tarifa desde tabla fijo
+    # Obtener tarifa
     fijo_response = (
         supabase
         .table("fijo")
@@ -138,21 +150,27 @@ def render_fijo(cliente):
 
     # -------- BOTÓN GENERAR PAGO --------
     with col1:
-        if st.button("GENERAR PAGO Y RECIBO PDF"):
+        if st.button("GENERAR PAGO"):
             try:
                 insert_response = (
                     supabase
                     .table("pagos")
                     .insert({
-                        "clientid": cliente["id"],
-                        "saldo": cargo,  # monto pagado
-                        "metodo_pago": metodo
+                        "fecha": date.today().isoformat(),
+                        "cargo_generado": cargo,
+                        "pago_realizado": cargo,  # aquí se paga completo
+                        "metodo_pago": metodo,
+                        "clientid": cliente["id"]
                     })
                     .execute()
                 )
 
                 if insert_response.data:
                     st.success("Pago registrado correctamente ✅")
+
+                    saldo_actual = calcular_saldo(cliente["id"])
+                    st.info(f"Saldo actual: ${saldo_actual:.2f}")
+
                 else:
                     st.error("No se pudo registrar el pago.")
 
