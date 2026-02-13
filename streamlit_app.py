@@ -77,11 +77,60 @@ with col1:
             st.success("Cliente creado correctamente")
             st.rerun()
 with col2:
+    # Clientes
+    clientes_data = supabase.table("clientes").select("*").execute().data
+    df_clientes = pd.DataFrame(clientes_data)
+
+    # Fijo
+    fijo_data = supabase.table("fijo").select("*").execute().data
+    df_fijo = pd.DataFrame(fijo_data)
+
+    # Lectura
+    lectura_data = supabase.table("lectura").select("*").execute().data
+    df_lectura = pd.DataFrame(lectura_data)
+
+    df = df_clientes.merge(
+        df_fijo[["clientid", "tarifa"]],
+        left_on="id",
+        right_on="clientid",
+        how="left"
+    )
+    
+    df = df.merge(
+        df_lectura[["clientid", "precio_m", "lectura_i", "lectura_a"]],
+        left_on="id",
+        right_on="clientid",
+        how="left"
+    )
+
+    df.drop(columns=["clientid"], inplace=True, errors="ignore")
+
+    df["consumo"] = df["lectura_a"] - df["lectura_i"]
+
+    df["total_estimado"] = df.apply(
+        lambda row: row["tarifa"] 
+        if row["tipo_cobro"] == "Fijo"
+        else row["consumo"] * row["precio_m"],
+        axis=1
+    )
+    
+    df_vista = df[[
+        "nombre",
+        "tipo_cobro",
+        "consumo",
+        "total_estimado",
+        "estado"
+    ]].copy()
+
+    df_vista["Estado Cuenta"] = df_vista["total_estimado"].apply(
+        lambda x: "🟢 Sin deuda" if x == 0 else "🟡 Pendiente"
+    )
+    
     clientes = supabase.table("cliente") \
     .select("""
         nombre,
         codigo,
         tipo_cobro
         """).execute().data
-    df = pd.DataFrame(clientes)
+    df = pd.DataFrame(df_vista)
     st.dataframe(df, use_container_width=True)
