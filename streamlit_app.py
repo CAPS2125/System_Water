@@ -113,15 +113,13 @@ with col2:
         else row["consumo"] * row["precio_m"],
         axis=1
     )
-
-    st.dataframe(df, use_container_width=True)
     
     df_vista = df[[
         "nombre",
+        "codigo",
         "tipo_cobro",
         "consumo",
-        "total_estimado",
-        "estado"
+        "total_estimado"
     ]].copy()
 
     df_vista["Estado Cuenta"] = df_vista["total_estimado"].apply(
