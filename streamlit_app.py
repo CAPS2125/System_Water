@@ -230,10 +230,7 @@ with col1:
             }).execute()
 
             cliente_id = res.data[0]["id"]
-
-            # 2. Insertar estado (SIEMPRE)
-            supabase.table("estado").insert({"estatus": "activo", "clientid": cliente_id, "saldo": 0, "adeudo": 0}).execute()
-            
+           
             # Si es fijo, inicializar tarifa
             if tipo_cobro == "Fijo" and tarifa is not None:
                 supabase.table("fijo").insert({"clientid": cliente_id, "Tarifa": tarifa}).execute()
