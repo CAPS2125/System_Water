@@ -14,23 +14,175 @@ SUPABASE_URL = st.secrets["supabase_url"]
 SUPABASE_KEY = st.secrets["supabase_anon_key"]
 supabase = create_client(SUPABASE_URL, SUPABASE_KEY)
 
-# Simulación
+# =========================
+# FUNCIONES BASE
+# =========================
+
 def obtener_cliente(codigo):
-    df = supabase.table("cliente").select("*").eq("codigo", codigo).execute()
-    if df.data:
-        return df.data[0]
+    response = supabase.table("clientes") \
+        .select("*") \
+        .eq("codigo", codigo) \
+        .execute()
+
+    if response.data:
+        return response.data[0]
     return None
 
-# Dialog Enrutador
+
+def calcular_saldo(cliente_id):
+    response = supabase.table("pagos") \
+        .select("cargo_generado, pago_realizado") \
+        .eq("cliente_id", cliente_id) \
+        .execute()
+
+    movimientos = response.data or []
+
+    total_cargos = sum(m["cargo_generado"] or 0 for m in movimientos)
+    total_pagos = sum(m["pago_realizado"] or 0 for m in movimientos)
+
+    return total_cargos - total_pagos
+
+
+def registrar_pago(cliente_id, cargo, pago, metodo):
+    supabase.table("pagos").insert({
+        "cliente_id": cliente_id,
+        "fecha": datetime.now().isoformat(),
+        "cargo_generado": cargo,
+        "pago_realizado": pago,
+        "metodo_pago": metodo
+    }).execute()
+
+
+def suspender_servicio(cliente_id):
+    supabase.table("cliente") \
+        .update({"estado_servicio": "Suspendido"}) \
+        .eq("id", cliente_id) \
+        .execute()
+
+
+# =========================
+# DIALOGO PRINCIPAL
+# =========================
+
 @st.dialog("Gestión de Gastos")
 def dialog_gestion(cliente):
 
+    cliente_id = cliente["id"]
+    saldo = calcular_saldo(cliente_id)
+
+    # Estado de cuenta derivado
+    if saldo > 0:
+        estado_cuenta = "Pendiente"
+    elif saldo == 0:
+        estado_cuenta = "Al corriente"
+    else:
+        estado_cuenta = "Saldo a favor"
+
     st.markdown(f"### CLIENTE: {cliente['nombre']}")
+    st.write(f"Estado del Servicio: **{cliente['estado_servicio']}**")
+    st.write(f"Estado de Cuenta: **{estado_cuenta}**")
+    st.write(f"Adeudo Actual: **${saldo:.2f}**")
+
+    st.divider()
 
     if cliente["tipo_cobro"] == "Medidor":
-        render_cobro_medidor(cliente)
+        render_medidor(cliente, saldo)
     else:
-        render_tarifa_fija(cliente)
+        render_fijo(cliente, saldo)
+
+
+# =========================
+# COBRO POR MEDIDOR
+# =========================
+
+def render_medidor(cliente, saldo):
+
+    st.subheader("COBRO POR MEDIDOR")
+
+    lectura_anterior = cliente["lectura_actual"]
+    st.write("Lectura Anterior:", lectura_anterior)
+
+    lectura_actual = st.number_input(
+        "Lectura Actual",
+        min_value=float(lectura_anterior),
+        key="lectura_actual"
+    )
+
+    tarifa_m3 = cliente.get("tarifa_m3", 1)
+
+    consumo = lectura_actual - lectura_anterior
+    cargo = consumo * tarifa_m3
+
+    st.write(f"Consumo: {consumo} m³")
+    st.write(f"Cargo del periodo: ${cargo:.2f}")
+
+    metodo = st.selectbox(
+        "Método de Pago",
+        ["Efectivo", "Transferencia"],
+        key="metodo_medidor"
+    )
+
+    st.divider()
+
+    if st.button("GENERAR PAGO Y RECIBO PDF", key="btn_medidor"):
+
+        registrar_pago(cliente["id"], cargo, cargo, metodo)
+
+        # actualizar lectura
+        supabase.table("clientes") \
+            .update({"lectura_actual": lectura_actual}) \
+            .eq("id", cliente["id"]) \
+            .execute()
+
+        st.success("Pago registrado correctamente")
+        st.rerun()
+
+    if st.button("SUSPENDER SERVICIO", key="suspender_medidor"):
+        suspender_servicio(cliente["id"])
+        st.warning("Servicio suspendido")
+        st.rerun()
+
+
+# =========================
+# COBRO TARIFA FIJA
+# =========================
+
+def render_fijo(cliente, saldo):
+
+    st.subheader("COBRO TARIFA FIJA")
+
+    meses = st.number_input(
+        "Meses a pagar",
+        min_value=1,
+        value=1,
+        key="meses"
+    )
+
+    tarifa = cliente["tarifa_mensual"]
+    cargo = meses * tarifa
+
+    st.write(f"Tarifa mensual: ${tarifa}")
+    st.write(f"Cargo total: ${cargo:.2f}")
+
+    metodo = st.selectbox(
+        "Método de Pago",
+        ["Efectivo", "Transferencia"],
+        key="metodo_fijo"
+    )
+
+    st.divider()
+
+    if st.button("GENERAR PAGO Y RECIBO PDF", key="btn_fijo"):
+
+        registrar_pago(cliente["id"], cargo, cargo, metodo)
+
+        st.success("Pago registrado correctamente")
+        st.rerun()
+
+    if st.button("SUSPENDER SERVICIO", key="suspender_fijo"):
+        suspender_servicio(cliente["id"])
+        st.warning("Servicio suspendido")
+        st.rerun()
 
 st.title("💧 Sistema de Clientes y Lecturas")
 
@@ -108,8 +260,7 @@ with col2:
         if cliente is None:
             st.error("❌ El cliente no existe.")
         else:
-            st.session_state.cliente_encontrado = cliente
-            st.session_state.abrir_dialogo = True
+            dialog_gestion(cliente)
         
     st.subheader("Tabla de Clientes")
     
