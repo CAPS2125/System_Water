@@ -197,12 +197,14 @@ with col1:
         codigo = st.text_input("Código *")
         telefono = st.text_input("Teléfono")
         correo = st.text_input("Correo")
-
+        estado_servicio = st.selectbox("Estado del Servicio", ["Activo", "Suspendido"])
+        
         st.markdown("**Dirección**")
         calle = st.text_input("Calle")
         lote = st.text_input("Lote")
         manzana = st.text_input("Manzana")
-        
+
+        st.markdown("**Cobro**")
         if tipo_cobro == "Fijo":
             tarifa = st.number_input("Tarifa fija mensual (solo si es Fijo)", min_value=0.0, step=10.0)
         elif tipo_cobro == "Medidor":
@@ -223,7 +225,8 @@ with col1:
                 "calle": calle,
                 "lote": lote,
                 "manzana": manzana,
-                "tipo_cobro": tipo_cobro
+                "tipo_cobro": tipo_cobro,
+                "estado_servicio": estado_servicio
             }).execute()
 
             cliente_id = res.data[0]["id"]
