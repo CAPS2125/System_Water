@@ -90,6 +90,15 @@ with col2:
     codigo = st.text_input("Código de Cliente")
 
     # -----------------------------------------
+    if st.button("Buscar Cliente"):
+
+        cliente = obtener_cliente(codigo)
+
+        if cliente is None:
+            st.error("❌ El cliente no existe.")
+        else:
+            st.session_state.cliente_encontrado = cliente
+            st.session_state.abrir_dialogo = True
         
     st.subheader("Tabla de Clientes")
     
