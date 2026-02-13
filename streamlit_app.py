@@ -16,7 +16,7 @@ supabase = create_client(SUPABASE_URL, SUPABASE_KEY)
 
 # Simulación
 def obtener_cliente(codigo):
-    df = supabase.table("clientes").select("*").eq("codigo", codigo).execute()
+    df = supabase.table("cliente").select("*").eq("codigo", codigo).execute()
     if df.data:
         return df.data[0]
     return None
