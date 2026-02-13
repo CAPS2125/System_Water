@@ -144,7 +144,7 @@ def render_fijo(cliente):
                     supabase
                     .table("pagos")
                     .insert({
-                        "cliente_id": cliente["id"],
+                        "clientid": cliente["id"],
                         "saldo": cargo,  # monto pagado
                         "metodo_pago": metodo
                     })
