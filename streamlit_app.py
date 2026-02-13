@@ -110,11 +110,8 @@ def render_medidor(cliente):
 
 
 # =========================
-# COBRO TARIFA FIJA (MOCK)
+# COBRO TARIFA FIJA
 # =========================
-
-from datetime import date
-
 def render_fijo(cliente):
     st.subheader("COBRO TARIFA FIJA")
 
@@ -156,7 +153,6 @@ def render_fijo(cliente):
                     supabase
                     .table("pagos")
                     .insert({
-                        "fecha": date.today().isoformat(),
                         "cargo_generado": cargo,
                         "pago_realizado": cargo,  # aquí se paga completo
                         "metodo_pago": metodo,
