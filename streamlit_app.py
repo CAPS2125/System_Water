@@ -25,7 +25,7 @@ def obtener_cliente(codigo):
 def calcular_saldo(cliente_id):
     response = supabase.table("pagos") \
         .select("cargo_generado, pago_realizado") \
-        .eq("clienteid", cliente_id) \
+        .eq("clientid", cliente_id) \
         .execute()
 
     movimientos = response.data or []
