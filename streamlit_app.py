@@ -19,7 +19,7 @@ supabase = create_client(SUPABASE_URL, SUPABASE_KEY)
 # =========================
 
 def obtener_cliente(codigo):
-    response = supabase.table("clientes") \
+    response = supabase.table("cliente") \
         .select("*") \
         .eq("codigo", codigo) \
         .execute()
