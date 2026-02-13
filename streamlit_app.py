@@ -14,35 +14,26 @@ SUPABASE_URL = st.secrets["supabase_url"]
 SUPABASE_KEY = st.secrets["supabase_anon_key"]
 supabase = create_client(SUPABASE_URL, SUPABASE_KEY)
 
-# Simulación
 def obtener_cliente(codigo):
-    if codigo == "001":
-        return CLIENTES_MOCK['001']
-    elif codigo == "002":
-        return CLIENTES_MOCK['002']
-    return None
+    response = supabase.table("clientes") \
+        .select("*") \
+        .eq("codigo", codigo) \
+        .execute()
 
-# =========================
-# MOCK CLIENTES
-# =========================
+    return response.data[0] if response.data else None
 
-CLIENTES_MOCK = {
-    "001": {
-        "id": "1",
-        "nombre": "Juan Pérez",
-        "tipo_cobro": "Medidor",
-        "estado_servicio": "Activo",
-        "lectura_actual": 120,
-        "tarifa_m3": 5
-    },
-    "002": {
-        "id": "2",
-        "nombre": "María López",
-        "tipo_cobro": "Fijo",
-        "estado_servicio": "Activo",
-        "tarifa_mensual": 150
-    }
-}
+def calcular_saldo(cliente_id):
+    response = supabase.table("pagos") \
+        .select("cargo_generado, pago_realizado") \
+        .eq("cliente_id", cliente_id) \
+        .execute()
+
+    movimientos = response.data or []
+
+    total_cargos = sum(m.get("cargo_generado", 0) or 0 for m in movimientos)
+    total_pagos = sum(m.get("pago_realizado", 0) or 0 for m in movimientos)
+
+    return total_cargos - total_pagos
 
 # =========================
 # DIALOG PRINCIPAL
@@ -50,19 +41,24 @@ CLIENTES_MOCK = {
 
 @st.dialog("Gestión de Gastos")
 def dialog_gestion(cliente):
+    saldo = calcular_saldo(cliente["id"])
 
+    if saldo > 0:
+        estado_cuenta = "Pendiente"
+    elif saldo == 0:
+        estado_cuenta = "Al corriente"
+    else:
+        estado_cuenta = "Saldo a favor"
+    
     st.markdown(f"### CLIENTE: {cliente['nombre']}")
     st.write(f"Estado del Servicio: **{cliente['estado_servicio']}**")
-    st.write("Estado de Cuenta: **Pendiente (Mock)**")
-    st.write("Adeudo Actual: **$350.00 (Mock)**")
-
+    st.write(f"Estado de Cuenta: **{estado_cuenta}**")
+    st.write(f"Adeudo Actual: **${saldo:.2f}**")
     st.divider()
-
     if cliente["tipo_cobro"] == "Medidor":
         render_medidor(cliente)
     else:
         render_fijo(cliente)
-
 
 # =========================
 # COBRO POR MEDIDOR (MOCK)
