@@ -30,15 +30,18 @@ def obtener_cliente(codigo):
 
 
 def calcular_saldo(cliente_id):
+
     response = supabase.table("pagos") \
-        .select("cargo_generado, pago_realizado") \
+        .select("*") \
         .eq("cliente_id", cliente_id) \
         .execute()
 
+    st.write("DEBUG RESPONSE:", response)
+
     movimientos = response.data or []
 
-    total_cargos = sum(m["cargo_generado"] or 0 for m in movimientos)
-    total_pagos = sum(m["pago_realizado"] or 0 for m in movimientos)
+    total_cargos = sum(m.get("cargo_generado", 0) or 0 for m in movimientos)
+    total_pagos = sum(m.get("pago_realizado", 0) or 0 for m in movimientos)
 
     return total_cargos - total_pagos
 
