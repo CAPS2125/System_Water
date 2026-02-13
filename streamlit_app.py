@@ -291,7 +291,7 @@ with col2:
     df["Total"] = df.apply(
         lambda row: row["tarifa"] 
         if row["tipo_cobro"] == "Fijo"
-        else row["consumo"] * row["precio_m"],
+        else row["Consumo"] * row["precio_m"],
         axis=1
     )
     
