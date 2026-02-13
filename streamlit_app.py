@@ -14,6 +14,12 @@ SUPABASE_URL = st.secrets["supabase_url"]
 SUPABASE_KEY = st.secrets["supabase_anon_key"]
 supabase = create_client(SUPABASE_URL, SUPABASE_KEY)
 
+# Simulación
+def obtener_cliente(codigo):
+    df = supabase.table("clientes").select("*").eq("codigo", codigo).execute()
+    if df.data:
+        return df.data[0]
+    return None
 
 st.title("💧 Sistema de Clientes y Lecturas")
 
@@ -77,6 +83,16 @@ with col1:
             st.success("Cliente creado correctamente")
             st.rerun()
 with col2:
+    # Buscar Clientes - Codigo
+    st.subheader("Buscar Cliente")
+
+    # Entrada del codigo
+    codigo = st.text_input("Código de Cliente")
+
+    # -----------------------------------------
+        
+    st.subheader("Tabla de Clientes")
+    
     # Clientes
     clientes_data = supabase.table("cliente").select("*").execute().data
     df_clientes = pd.DataFrame(clientes_data)
