@@ -113,6 +113,7 @@ def render_fijo(cliente):
         value=1
     )
 
+    st.write(client)
     tarifa = cliente["tarifa"]
     cargo = meses * tarifa
 
