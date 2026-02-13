@@ -16,9 +16,9 @@ supabase = create_client(SUPABASE_URL, SUPABASE_KEY)
 
 # Simulación
 def obtener_cliente(codigo):
-    if codigo == 001:
+    if codigo == "001":
         return CLIENTES_MOCK['001']
-    elif codigo == 002:
+    elif codigo == "002":
         return CLIENTES_MOCK['002']
     return None
 
