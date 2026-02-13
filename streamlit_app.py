@@ -288,16 +288,16 @@ with col2:
 
     df["Consumo"] = df["lectura_a"] - df["lectura_i"]
 
-    df["Total"] = df.apply(
+    df["Total $"] = df.apply(
         lambda row: row["tarifa"] 
         if row["tipo_cobro"] == "Fijo"
         else row["Consumo"] * row["precio_m"],
         axis=1
     )
     
-    df_vista = df[["nombre", "codigo", "tipo_cobro", "Consumo" , "Total"]].copy()
+    df_vista = df[["nombre", "codigo", "tipo_cobro", "Consumo" , "Total $"]].copy()
 
-    df_vista["Estado Cuenta"] = df_vista["total_estimado"].apply(
+    df_vista["Estado Cuenta"] = df_vista["Total $"].apply(
         lambda x: "🟢 Sin deuda" if x == 0 else "🟡 Pendiente"
     )
     
