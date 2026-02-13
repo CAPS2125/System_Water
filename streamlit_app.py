@@ -21,6 +21,17 @@ def obtener_cliente(codigo):
         return df.data[0]
     return None
 
+# Dialog Enrutador
+@st.dialog("Gestión de Gastos")
+def dialog_gestion(cliente):
+
+    st.markdown(f"### CLIENTE: {cliente['nombre']}")
+
+    if cliente["tipo_cobro"] == "Medidor":
+        render_cobro_medidor(cliente)
+    else:
+        render_tarifa_fija(cliente)
+
 st.title("💧 Sistema de Clientes y Lecturas")
 
 # ======================
