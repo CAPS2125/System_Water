@@ -113,6 +113,8 @@ with col2:
         else row["consumo"] * row["precio_m"],
         axis=1
     )
+
+    st.dataframe(df, use_container_width=True)
     
     df_vista = df[[
         "nombre",
