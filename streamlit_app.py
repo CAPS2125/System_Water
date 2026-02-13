@@ -126,11 +126,4 @@ with col2:
         lambda x: "🟢 Sin deuda" if x == 0 else "🟡 Pendiente"
     )
     
-    clientes = supabase.table("cliente") \
-    .select("""
-        nombre,
-        codigo,
-        tipo_cobro
-        """).execute().data
-    df = pd.DataFrame(df_vista)
-    st.dataframe(df, use_container_width=True)
+    st.dataframe(df_vista, use_container_width=True)
