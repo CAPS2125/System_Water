@@ -105,9 +105,23 @@ def render_medidor(cliente):
 
 def render_fijo(cliente):
     st.subheader("COBRO TARIFA FIJA")
+
     meses = st.number_input("Meses a pagar", min_value=1, value=1)
-    fijo_data = supabase.table("fijo").select("tarifa").eq("clientid", cliente['id']).execute().data
-    tarifa = fijo_data[0]["tarifa"]
+
+    # Obtener tarifa desde tabla fijo
+    fijo_response = (
+        supabase
+        .table("fijo")
+        .select("tarifa")
+        .eq("clientid", cliente["id"])
+        .execute()
+    )
+
+    if not fijo_response.data:
+        st.error("No se encontró tarifa fija para este cliente.")
+        return
+
+    tarifa = float(fijo_response.data[0]["tarifa"])
     cargo = meses * tarifa
 
     st.write(f"Tarifa mensual: ${tarifa}")
@@ -122,11 +136,33 @@ def render_fijo(cliente):
 
     col1, col2 = st.columns(2)
 
+    # -------- BOTÓN GENERAR PAGO --------
     with col1:
-        st.button("GENERAR PAGO Y RECIBO PDF (Mock)")
+        if st.button("GENERAR PAGO Y RECIBO PDF"):
+            try:
+                insert_response = (
+                    supabase
+                    .table("pagos")
+                    .insert({
+                        "cliente_id": cliente["id"],
+                        "saldo": cargo,  # monto pagado
+                        "metodo_pago": metodo
+                    })
+                    .execute()
+                )
 
+                if insert_response.data:
+                    st.success("Pago registrado correctamente ✅")
+                else:
+                    st.error("No se pudo registrar el pago.")
+
+            except Exception as e:
+                st.error(f"Error al registrar pago: {e}")
+
+    # -------- BOTÓN SUSPENDER --------
     with col2:
-        st.button("SUSPENDER SERVICIO (Mock)")
+        if st.button("SUSPENDER SERVICIO"):
+            st.warning("Función de suspensión aún no implementada.")
         
 st.title("💧 Sistema de Clientes y Lecturas")
 
