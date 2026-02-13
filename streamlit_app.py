@@ -114,13 +114,7 @@ with col2:
         axis=1
     )
     
-    df_vista = df[[
-        "nombre",
-        "codigo",
-        "tipo_cobro",
-        "consumo",
-        "total_estimado"
-    ]].copy()
+    df_vista = df[["nombre", "codigo", "tipo_cobro", "consumo" ,"total_estimado"]].copy()
 
     df_vista["Estado Cuenta"] = df_vista["total_estimado"].apply(
         lambda x: "🟢 Sin deuda" if x == 0 else "🟡 Pendiente"
