@@ -108,7 +108,7 @@ def render_fijo(cliente):
     meses = st.number_input("Meses a pagar", min_value=1, value=1)
     fijo_data = supabase.table("fijo").select("tarifa").eq("clientid", cliente['id']).execute().data
     st.write(fijo_data)
-    tarifa = fijo_data["tarifa"]
+    tarifa = fijo_data[0]["tarifa"]
     cargo = meses * tarifa
 
     st.write(f"Tarifa mensual: ${tarifa}")
