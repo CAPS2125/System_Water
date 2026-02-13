@@ -104,17 +104,11 @@ def render_medidor(cliente):
 # =========================
 
 def render_fijo(cliente):
-
     st.subheader("COBRO TARIFA FIJA")
-
-    meses = st.number_input(
-        "Meses a pagar",
-        min_value=1,
-        value=1
-    )
-
-    st.write(cliente)
-    tarifa = cliente["tarifa"]
+    meses = st.number_input("Meses a pagar", min_value=1, value=1)
+    fijo_data = supabase.table("fijo").select("*").eq("cliente_id", cliente['id']).execute().data
+    st.write(fijo_data)
+    tarifa = fijo_data["tarifa"]
     cargo = meses * tarifa
 
     st.write(f"Tarifa mensual: ${tarifa}")
