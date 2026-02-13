@@ -78,7 +78,7 @@ with col1:
             st.rerun()
 with col2:
     # Clientes
-    clientes_data = supabase.table("clientes").select("*").execute().data
+    clientes_data = supabase.table("cliente").select("*").execute().data
     df_clientes = pd.DataFrame(clientes_data)
 
     # Fijo
