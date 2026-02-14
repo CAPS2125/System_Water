@@ -14,10 +14,6 @@ SUPABASE_URL = st.secrets["supabase_url"]
 SUPABASE_KEY = st.secrets["supabase_anon_key"]
 supabase = create_client(SUPABASE_URL, SUPABASE_KEY)
 
-# ======================================================
-# FUNCIONES
-# ======================================================
-
 def obtener_cliente(codigo):
     response = supabase.table("cliente") \
         .select("*") \
@@ -36,17 +32,11 @@ def calcular_saldo(cliente_id):
             .execute()
         )
 
-        print(f"DEBUG - cliente_id: {cliente_id}")
-        print(f"DEBUG - response.data: {response.data}")
-
         if not response.data:
             return 0.0
 
         total_cargos = sum(p.get("cargo_generado", 0) or 0 for p in response.data)
         total_pagos = sum(p.get("pago_realizado", 0) or 0 for p in response.data)
-
-        print(f"DEBUG - total_cargos: {total_cargos}")
-        print(f"DEBUG - total_pagos: {total_pagos}")
 
         saldo = float(total_cargos) - float(total_pagos)
         return round(saldo, 2)
@@ -55,15 +45,43 @@ def calcular_saldo(cliente_id):
         print("Error en calcular_saldo:", e)
         return 0.0
 
+# ========== ESTA FUNCION VA ENCIMA DE dialog_gestion ==========
+def generar_cargos_mensuales():
+    """Genera cargos fijos para todos los clientes con tipo_cobro='Fijo'"""
+    try:
+        # Obtener todos los clientes con cobro fijo
+        clientes = supabase.table("cliente").select("*").eq("tipo_cobro", "Fijo").execute().data
+        
+        for cliente in clientes:
+            # Obtener la tarifa
+            fijo_response = (
+                supabase
+                .table("fijo")
+                .select("tarifa")
+                .eq("clientid", cliente["id"])
+                .execute()
+            )
+            
+            if fijo_response.data:
+                tarifa = float(fijo_response.data[0]["tarifa"])
+                
+                # Insertar cargo (sin pago aún)
+                supabase.table("pagos").insert({
+                    "cargo_generado": tarifa,
+                    "pago_realizado": 0,
+                    "clientid": cliente["id"]
+                }).execute()
+        
+        print("Cargos mensuales generados")
+    except Exception as e:
+        print(f"Error generando cargos: {e}")
+
 # =========================
 # DIALOG PRINCIPAL
 # =========================
 
 @st.dialog("Gestión de Gastos")
 def dialog_gestion(cliente):
-    # Guardar cliente_id en session_state para usarlo después
-    st.session_state.cliente_id = cliente["id"]
-    
     saldo = calcular_saldo(cliente["id"])
 
     if saldo > 0:
@@ -76,7 +94,6 @@ def dialog_gestion(cliente):
     st.markdown(f"### CLIENTE: {cliente['nombre']}")
     st.write(f"Estado del Servicio: **{cliente['estado_servicio']}**")
     
-    # Mostrar saldo con placeholder para actualizar dinámicamente
     saldo_placeholder = st.empty()
     saldo_placeholder.write(f"Estado de Cuenta: **{estado_cuenta}**")
     saldo_placeholder.write(f"Adeudo Actual: **${saldo:.2f}**")
@@ -161,7 +178,7 @@ def render_fijo(cliente, saldo_placeholder, estado_cuenta):
     # CALCULAR TOTAL A PAGAR
     total_a_pagar = 0.0
     if pagar_adeudo:
-        total_a_pagar += max(0, saldo_actual)  # Solo suma si hay adeudo
+        total_a_pagar += max(0, saldo_actual)
     total_a_pagar += pagar_meses * tarifa
 
     st.write(f"**Total a pagar: ${total_a_pagar:.2f}**")
@@ -182,11 +199,12 @@ def render_fijo(cliente, saldo_placeholder, estado_cuenta):
                 return
                 
             try:
+                # SOLO insertar pago_realizado (cargo_generado ya existe)
                 insert_response = (
                     supabase
                     .table("pagos")
                     .insert({
-                        "cargo_generado": total_a_pagar,
+                        "cargo_generado": 0,
                         "pago_realizado": total_a_pagar,
                         "metodo_pago": metodo,
                         "clientid": cliente["id"]
@@ -197,7 +215,6 @@ def render_fijo(cliente, saldo_placeholder, estado_cuenta):
                 if insert_response.data:
                     st.success("Pago registrado correctamente ✅")
                     
-                    # Recalcula el nuevo saldo
                     nuevo_saldo = calcular_saldo(cliente["id"])
                     
                     if nuevo_saldo > 0:
@@ -221,6 +238,16 @@ def render_fijo(cliente, saldo_placeholder, estado_cuenta):
         if st.button("SUSPENDER SERVICIO"):
             st.warning("Función de suspensión aún no implementada.")
 
+# ========== ESTA FUNCION VA ENCIMA DE cargar_tabla_clientes ==========
+def obtener_saldo_seguro(cliente_id):
+    try:
+        saldo = calcular_saldo(cliente_id)
+        return saldo
+    except Exception as e:
+        print(f"Error obteniendo saldo para {cliente_id}: {e}")
+        return 0.0
+
+# ========== ESTA FUNCION VA ENCIMA DE st.title ==========
 def cargar_tabla_clientes():
     """Carga y retorna la tabla de clientes con saldo actualizado"""
     
@@ -261,17 +288,7 @@ def cargar_tabla_clientes():
         axis=1
     )
     
-    # AGREGAR SALDO DINAMICO
-    # AHORA - con try/except visible:
-    def obtener_saldo_seguro(cliente_id):
-        try:
-            saldo = calcular_saldo(cliente_id)
-            print(f"Saldo para cliente {cliente_id}: {saldo}")
-            return saldo
-        except Exception as e:
-            print(f"Error obteniendo saldo para {cliente_id}: {e}")
-            return 0.0
-
+    # Calcular saldo real desde tabla pagos
     df["Saldo"] = df["id"].apply(obtener_saldo_seguro)
     
     df_vista = df[["nombre", "codigo", "tipo_cobro", "Consumo", "Total $", "Saldo"]].copy()
@@ -343,11 +360,17 @@ with col1:
 
             st.success("Cliente creado correctamente")
             st.rerun()
+
 with col2:
+    # Buscar Clientes - Codigo
     st.subheader("Buscar Cliente")
+
+    # Entrada del codigo
     codigo = st.text_input("Código de Cliente")
 
+    # -----------------------------------------
     if st.button("Buscar Cliente"):
+
         cliente = obtener_cliente(codigo)
 
         if cliente is None:
