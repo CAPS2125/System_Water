@@ -38,7 +38,7 @@ def calcular_saldo(cliente_id):
         total_cargos = sum(p.get("cargo_generado", 0) or 0 for p in response.data)
         total_pagos = sum(p.get("pago_realizado", 0) or 0 for p in response.data)
 
-        saldo = float(total_cargos) - float(total_pagos)
+        saldo = float(total_pagos) - float(total_cargos)
         return round(saldo, 2)
 
     except Exception as e:
