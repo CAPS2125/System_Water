@@ -86,17 +86,20 @@ def dialog_gestion(cliente):
 
     if saldo < 0:
         estado_cuenta = "Pendiente"
+        etiqueta_saldo = "Adeudo Actual"
     elif saldo == 0:
         estado_cuenta = "Al corriente"
+        etiqueta_saldo = "Saldo"
     else:
         estado_cuenta = "Saldo a favor"
-    
+        etiqueta_saldo = "Saldo a Favor"
+
     st.markdown(f"### CLIENTE: {cliente['nombre']}")
     st.write(f"Estado del Servicio: **{cliente['estado_servicio']}**")
-    
+
     saldo_placeholder = st.empty()
     saldo_placeholder.write(f"Estado de Cuenta: **{estado_cuenta}**")
-    saldo_placeholder.write(f"Adeudo Actual: **${saldo:.2f}**")
+    saldo_placeholder.write(f"{etiqueta_saldo}: **${abs(saldo):.2f}**")
     
     st.divider()
     if cliente["tipo_cobro"] == "Medidor":
