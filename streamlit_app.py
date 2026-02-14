@@ -25,20 +25,18 @@ def obtener_cliente(codigo):
 def calcular_saldo(cliente_id):
     try:
         response = supabase.table("pagos").select("cargo_generado, pago_realizado").eq("clientid", cliente_id).execute()
-        
         if not response.data:
             return 0.0
 
-        # Suma total de lo que se le ha cobrado
-        total_cargos = sum(float(p.get("cargo_generado") or 0) for p in response.data)
-        # Suma total de lo que el cliente ha pagado
-        total_pagos = sum(float(p.get("pago_realizado") or 0) for p in response.data)
+        total_cargos = sum(float(p.get("cargo_generado", 0) or 0) for p in response.data)
+        total_pagos = sum(float(p.get("pago_realizado", 0) or 0) for p in response.data)
 
-        # Saldo POSITIVO = El cliente DEBE dinero
-        # Saldo NEGATIVO = El cliente tiene DINERO A FAVOR
-        return round(total_cargos - total_pagos, 2)
+        # TU LÓGICA: Pagos - Cargos
+        # Resultado positivo (+) = Saldo a favor
+        # Resultado negativo (-) = Adeudo
+        saldo = total_pagos - total_cargos
+        return round(saldo, 2)
     except Exception as e:
-        st.error(f"Error en calcular_saldo: {e}")
         return 0.0
 
 # ========== GENERA CARGOS MENSUALES ==========
@@ -77,30 +75,29 @@ def generar_cargos_mensuales():
 def dialog_gestion(cliente):
     saldo = calcular_saldo(cliente["id"])
 
-    # Lógica de etiquetas sin confundir signos
     if saldo > 0:
-        estado_cuenta = "🔴 Pendiente (Adeudo)"
-        color = "red"
-        monto_display = f"${saldo:.2f}"
-    elif saldo < 0:
-        estado_cuenta = "🔵 Saldo a Favor"
-        color = "blue"
-        # Mostramos el monto positivo para que sea legible, pero con etiqueta clara
-        monto_display = f"${abs(saldo):.2f}"
+        estado_cuenta = "Saldo a favor"
+        etiqueta_saldo = "Saldo a Favor"
+        monto_f = f"${saldo:,.2f}" # Es positivo, se ve normal
+    elif saldo == 0:
+        estado_cuenta = "Al corriente"
+        etiqueta_saldo = "Saldo"
+        monto_f = "$0.00"
     else:
-        estado_cuenta = "🟢 Al corriente"
-        color = "green"
-        monto_display = "$0.00"
+        estado_cuenta = "Pendiente"
+        etiqueta_saldo = "Adeudo Actual"
+        # Mostramos el número con su signo "-" para que sepas que es deuda
+        monto_f = f"${saldo:,.2f}" 
     
     st.markdown(f"### CLIENTE: {cliente['nombre']}")
-    st.markdown(f"Estado: **:{color}[{estado_cuenta}]**")
-    st.markdown(f"### {monto_display}")
+    st.write(f"Estado de Cuenta: **{estado_cuenta}**")
+    st.write(f"{etiqueta_saldo}: **{monto_f}**")
     
     st.divider()
     if cliente["tipo_cobro"] == "Medidor":
         render_medidor(cliente)
     else:
-        render_fijo(cliente, None) # Quitamos el placeholder para evitar errores de refresco
+        render_fijo(cliente, None)
 
 # =========================
 # COBRO POR MEDIDOR (MOCK)
@@ -170,63 +167,38 @@ def render_medidor(cliente):
 # =========================
 # COBRO TARIFA FIJA
 # =========================
-def render_fijo(cliente, saldo_placeholder):
+def render_fijo(cliente, _):
     st.subheader("COBRO TARIFA FIJA")
-
-    saldo_actual = calcular_saldo(cliente["id"])
+    saldo_actual = calcular_saldo(cliente["id"]) # Ejemplo: -200 (debe)
     
-    # Mostramos el estado real
-    if saldo_actual > 0:
-        st.warning(f"Adeudo Actual: ${saldo_actual:,.2f}")
-    elif saldo_actual < 0:
-        st.info(f"Saldo a Favor: ${abs(saldo_actual):,.2f}")
-    else:
-        st.success("Al corriente: $0.00")
+    # Si el saldo es negativo, es lo que debe pagar
+    adeudo_visual = abs(saldo_actual) if saldo_actual < 0 else 0.0
     
-    # Obtener tarifa de la tabla 'fijo'
-    fijo_response = supabase.table("fijo").select("tarifa").eq("clientid", cliente["id"]).execute()
-    if not fijo_response.data:
-        st.error("No se encontró tarifa fija.")
-        return
+    if saldo_actual < 0:
+        st.error(f"Adeudo Actual: ${adeudo_visual:,.2f}")
+    elif saldo_actual > 0:
+        st.info(f"Saldo a Favor: ${saldo_actual:,.2f}")
 
-    tarifa = float(fijo_response.data[0]["tarifa"])
-    st.write(f"Tarifa mensual: **${tarifa:,.2f}**")
+    fijo_res = supabase.table("fijo").select("tarifa").eq("clientid", cliente["id"]).execute()
+    tarifa = float(fijo_res.data[0]["tarifa"]) if fijo_res.data else 0.0
 
-    st.markdown("**¿Qué deseas pagar?**")
-    
-    # Lógica de cobro: Solo sugerir pagar adeudo si es mayor a 0
-    pagar_adeudo = st.checkbox("Pagar adeudo actual", value=(saldo_actual > 0))
-    pagar_meses = st.number_input("Meses a pagar (nuevos)", min_value=0, value=1 if saldo_actual <= 0 else 0)
+    pagar_adeudo = st.checkbox("Liquidar adeudo anterior", value=(saldo_actual < 0))
+    pagar_meses = st.number_input("Meses a pagar (nuevos)", min_value=0, value=1 if saldo_actual >= 0 else 0)
 
-    # CALCULAR TOTAL
-    total_a_pagar = 0.0
-    if pagar_adeudo:
-        total_a_pagar += max(0.0, saldo_actual)
-    total_a_pagar += pagar_meses * tarifa
+    # Calculamos cuánto debe soltar de dinero hoy
+    total_a_pagar = (adeudo_visual if pagar_adeudo else 0.0) + (pagar_meses * tarifa)
 
-    st.markdown(f"### Total a pagar: `${total_a_pagar:,.2f}`")
+    st.markdown(f"### Total a recibir: `${total_a_pagar:,.2f}`")
 
-    metodo = st.selectbox("Método de Pago", ["Efectivo", "Transferencia"])
-
-    if st.button("GENERAR PAGO", type="primary"):
-        if total_a_pagar <= 0:
-            st.error("El monto debe ser mayor a 0")
-        else:
-            try:
-                # INSERTAR EL PAGO
-                # Nota: Si paga meses nuevos, esos cargos se compensarán 
-                # cuando corras la función 'generar_cargos_mensuales'
-                supabase.table("pagos").insert({
-                    "cargo_generado": 0,
-                    "pago_realizado": total_a_pagar,
-                    "metodo_pago": metodo,
-                    "clientid": cliente["id"]
-                }).execute()
-
-                st.success("✅ Pago registrado con éxito")
-                st.rerun() # Esto refresca todo para ver el nuevo saldo
-            except Exception as e:
-                st.error(f"Error al registrar: {e}")
+    if st.button("REGISTRAR PAGO"):
+        if total_a_pagar > 0:
+            supabase.table("pagos").insert({
+                "cargo_generado": 0,
+                "pago_realizado": total_a_pagar,
+                "clientid": cliente["id"]
+            }).execute()
+            st.success("Pago registrado")
+            st.rerun()
 
 # ========== OBTENER SALDO SEGURO ==========
 def obtener_saldo_seguro(cliente_id):
