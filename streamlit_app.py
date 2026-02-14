@@ -77,28 +77,30 @@ def generar_cargos_mensuales():
 def dialog_gestion(cliente):
     saldo = calcular_saldo(cliente["id"])
 
+    # Lógica de etiquetas sin confundir signos
     if saldo > 0:
-        estado_cuenta = "Pendiente"
-        etiqueta_saldo = "Adeudo Actual"
-    elif saldo == 0:
-        estado_cuenta = "Al corriente"
-        etiqueta_saldo = "Saldo"
+        estado_cuenta = "🔴 Pendiente (Adeudo)"
+        color = "red"
+        monto_display = f"${saldo:,.2f}"
+    elif saldo < 0:
+        estado_cuenta = "🔵 Saldo a Favor"
+        color = "blue"
+        # Mostramos el monto positivo para que sea legible, pero con etiqueta clara
+        monto_display = f"${abs(saldo):,2f}"
     else:
-        estado_cuenta = "Saldo a favor"
-        etiqueta_saldo = "Saldo a Favor"
+        estado_cuenta = "🟢 Al corriente"
+        color = "green"
+        monto_display = "$0.00"
     
     st.markdown(f"### CLIENTE: {cliente['nombre']}")
-    st.write(f"Estado del Servicio: **{cliente['estado_servicio']}**")
-    
-    saldo_placeholder = st.empty()
-    saldo_placeholder.write(f"Estado de Cuenta: **{estado_cuenta}**")
-    saldo_placeholder.write(f"{etiqueta_saldo}: **${abs(saldo):.2f}**")
+    st.markdown(f"Estado: **:{color}[{estado_cuenta}]**")
+    st.markdown(f"### {monto_display}")
     
     st.divider()
     if cliente["tipo_cobro"] == "Medidor":
         render_medidor(cliente)
     else:
-        render_fijo(cliente, saldo_placeholder)
+        render_fijo(cliente, None) # Quitamos el placeholder para evitar errores de refresco
 
 # =========================
 # COBRO POR MEDIDOR (MOCK)
