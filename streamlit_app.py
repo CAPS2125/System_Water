@@ -251,52 +251,47 @@ def obtener_saldo_seguro(cliente_id):
 
 # ========== CARGAR TABLA CLIENTES ==========
 def cargar_tabla_clientes():
-    """Carga y retorna la tabla de clientes con saldo actualizado"""
-    
-    # Clientes
+    """Carga la tabla de clientes optimizando las peticiones a Supabase"""
+    # 1. Cargas masivas (Una sola petición por tabla)
     clientes_data = supabase.table("cliente").select("*").execute().data
-    df_clientes = pd.DataFrame(clientes_data)
+    fijo_data = supabase.table("fijo").select("clientid, tarifa").execute().data
+    lectura_data = supabase.table("lectura").select("clientid, precio_m, lectura_i, lectura_a").execute().data
+    pagos_data = supabase.table("pagos").select("clientid, cargo_generado, pago_realizado").execute().data
 
-    # Fijo
-    fijo_data = supabase.table("fijo").select("*").execute().data
+    # 2. Convertir a DataFrames
+    df = pd.DataFrame(clientes_data)
     df_fijo = pd.DataFrame(fijo_data)
-
-    # Lectura
-    lectura_data = supabase.table("lectura").select("*").execute().data
     df_lectura = pd.DataFrame(lectura_data)
+    df_pagos = pd.DataFrame(pagos_data)
 
-    df = df_clientes.merge(
-        df_fijo[["clientid", "tarifa"]],
-        left_on="id",
-        right_on="clientid",
-        how="left"
-    )
+    # 3. Calcular Saldos de forma vectorial (Rápido)
+    if not df_pagos.empty:
+        # Agrupamos todos los pagos por cliente en una sola operación
+        saldos_df = df_pagos.groupby("clientid").apply(
+            lambda x: (x["cargo_generado"].sum() or 0) - (x["pago_realizado"].sum() or 0)
+        ).reset_index(name="Saldo")
+    else:
+        saldos_df = pd.DataFrame(columns=["clientid", "Saldo"])
+
+    # 4. Merges para consolidar la información
+    df = df.merge(df_fijo, left_on="id", right_on="clientid", how="left")
+    df = df.merge(df_lectura, left_on="id", right_on="clientid", how="left", suffixes=('', '_l'))
+    df = df.merge(saldos_df, left_on="id", right_on="clientid", how="left")
+
+    # Limpieza y cálculos finales
+    df["Saldo"] = df["Saldo"].fillna(0.0).round(2)
+    df["Consumo"] = (df["lectura_a"] - df["lectura_i"]).fillna(0)
     
-    df = df.merge(
-        df_lectura[["clientid", "precio_m", "lectura_i", "lectura_a"]],
-        left_on="id",
-        right_on="clientid",
-        how="left"
-    )
-
-    df.drop(columns=["clientid"], inplace=True, errors="ignore")
-
-    df["Consumo"] = df["lectura_a"] - df["lectura_i"]
-
     df["Total $"] = df.apply(
-        lambda row: row["tarifa"] 
-        if row["tipo_cobro"] == "Fijo"
-        else row["Consumo"] * row["precio_m"],
+        lambda row: row["tarifa"] if row["tipo_cobro"] == "Fijo" 
+        else row["Consumo"] * (row["precio_m"] or 0),
         axis=1
     )
-    
-    # Calcular saldo real desde tabla pagos
-    df["Saldo"] = df["id"].apply(obtener_saldo_seguro)
-    
-    df_vista = df[["nombre", "codigo", "tipo_cobro", "Consumo", "Total $", "Saldo"]].copy()
 
+    # Formateo visual
+    df_vista = df[["nombre", "codigo", "tipo_cobro", "Consumo", "Total $", "Saldo"]].copy()
     df_vista["Estado Cuenta"] = df_vista["Saldo"].apply(
-        lambda x: "🟡 Pendiente" if x > 0 else ("🟢 Al corriente" if x == 0 else "🟢 Saldo a favor")
+        lambda x: "🟡 Pendiente" if x > 0 else ("🟢 Al corriente" if x == 0 else "🔵 Saldo a favor")
     )
     
     return df_vista
