@@ -84,7 +84,7 @@ def generar_cargos_mensuales():
 def dialog_gestion(cliente):
     saldo = calcular_saldo(cliente["id"])
 
-    if saldo > 0:
+    if saldo < 0:
         estado_cuenta = "Pendiente"
     elif saldo == 0:
         estado_cuenta = "Al corriente"
