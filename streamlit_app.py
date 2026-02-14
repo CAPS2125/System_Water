@@ -262,7 +262,17 @@ def cargar_tabla_clientes():
     )
     
     # AGREGAR SALDO DINAMICO
-    df["Saldo"] = df["id"].apply(lambda cliente_id: calcular_saldo(cliente_id))
+    # AHORA - con try/except visible:
+    def obtener_saldo_seguro(cliente_id):
+        try:
+            saldo = calcular_saldo(cliente_id)
+            print(f"Saldo para cliente {cliente_id}: {saldo}")
+            return saldo
+        except Exception as e:
+            print(f"Error obteniendo saldo para {cliente_id}: {e}")
+            return 0.0
+
+    df["Saldo"] = df["id"].apply(obtener_saldo_seguro)
     
     df_vista = df[["nombre", "codigo", "tipo_cobro", "Consumo", "Total $", "Saldo"]].copy()
 
