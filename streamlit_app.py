@@ -38,22 +38,20 @@ def calcular_saldo(cliente_id):
         total_cargos = sum(p.get("cargo_generado", 0) or 0 for p in response.data)
         total_pagos = sum(p.get("pago_realizado", 0) or 0 for p in response.data)
 
-        saldo = float(total_pagos) - float(total_cargos)
+        saldo = total_cargos - total_pagos
         return round(saldo, 2)
 
     except Exception as e:
         print("Error en calcular_saldo:", e)
         return 0.0
 
-# ========== ESTA FUNCION VA ENCIMA DE dialog_gestion ==========
+# ========== GENERA CARGOS MENSUALES ==========
 def generar_cargos_mensuales():
     """Genera cargos fijos para todos los clientes con tipo_cobro='Fijo'"""
     try:
-        # Obtener todos los clientes con cobro fijo
         clientes = supabase.table("cliente").select("*").eq("tipo_cobro", "Fijo").execute().data
         
         for cliente in clientes:
-            # Obtener la tarifa
             fijo_response = (
                 supabase
                 .table("fijo")
@@ -65,7 +63,6 @@ def generar_cargos_mensuales():
             if fijo_response.data:
                 tarifa = float(fijo_response.data[0]["tarifa"])
                 
-                # Insertar cargo (sin pago aún)
                 supabase.table("pagos").insert({
                     "cargo_generado": tarifa,
                     "pago_realizado": 0,
@@ -84,7 +81,7 @@ def generar_cargos_mensuales():
 def dialog_gestion(cliente):
     saldo = calcular_saldo(cliente["id"])
 
-    if saldo < 0:
+    if saldo > 0:
         estado_cuenta = "Pendiente"
         etiqueta_saldo = "Adeudo Actual"
     elif saldo == 0:
@@ -93,10 +90,10 @@ def dialog_gestion(cliente):
     else:
         estado_cuenta = "Saldo a favor"
         etiqueta_saldo = "Saldo a Favor"
-
+    
     st.markdown(f"### CLIENTE: {cliente['nombre']}")
     st.write(f"Estado del Servicio: **{cliente['estado_servicio']}**")
-
+    
     saldo_placeholder = st.empty()
     saldo_placeholder.write(f"Estado de Cuenta: **{estado_cuenta}**")
     saldo_placeholder.write(f"{etiqueta_saldo}: **${abs(saldo):.2f}**")
@@ -105,7 +102,7 @@ def dialog_gestion(cliente):
     if cliente["tipo_cobro"] == "Medidor":
         render_medidor(cliente)
     else:
-        render_fijo(cliente, saldo_placeholder, estado_cuenta)
+        render_fijo(cliente, saldo_placeholder)
 
 # =========================
 # COBRO POR MEDIDOR (MOCK)
@@ -149,12 +146,12 @@ def render_medidor(cliente):
 # =========================
 # COBRO TARIFA FIJA
 # =========================
-def render_fijo(cliente, saldo_placeholder, estado_cuenta):
+def render_fijo(cliente, saldo_placeholder):
     st.subheader("COBRO TARIFA FIJA")
 
     # ADEUDO ACTUAL
     saldo_actual = calcular_saldo(cliente["id"])
-    st.write(f"**Adeudo Actual: ${saldo_actual:.2f}**")
+    st.write(f"**Adeudo Actual: ${abs(saldo_actual):.2f}**")
     
     # Obtener tarifa
     fijo_response = (
@@ -200,25 +197,14 @@ def render_fijo(cliente, saldo_placeholder, estado_cuenta):
             if total_a_pagar <= 0:
                 st.error("El monto a pagar debe ser mayor a 0")
                 return
-            
+                
             try:
-                # Determinar si es pago de deuda o adelanto
-                if saldo_actual < 0:  # Hay deuda
-                    cargo_generado = 0
-                    pago_realizado = total_a_pagar
-                elif saldo_actual > 0:  # Hay saldo a favor (adelanto previo)
-                    cargo_generado = 0
-                    pago_realizado = total_a_pagar
-                else:  # Sin deuda, es adelanto
-                    cargo_generado = -total_a_pagar  # Negativo = adelanto
-                    pago_realizado = 0
-            
                 insert_response = (
                     supabase
                     .table("pagos")
                     .insert({
-                        "cargo_generado": cargo_generado,
-                        "pago_realizado": pago_realizado,
+                        "cargo_generado": 0,
+                        "pago_realizado": total_a_pagar,
                         "metodo_pago": metodo,
                         "clientid": cliente["id"]
                     })
@@ -227,10 +213,10 @@ def render_fijo(cliente, saldo_placeholder, estado_cuenta):
 
                 if insert_response.data:
                     st.success("Pago registrado correctamente ✅")
-                
+                    
                     nuevo_saldo = calcular_saldo(cliente["id"])
-                
-                    if nuevo_saldo < 0:
+                    
+                    if nuevo_saldo > 0:
                         estado_nuevo = "Pendiente"
                         etiqueta_saldo = "Adeudo Actual"
                     elif nuevo_saldo == 0:
@@ -239,11 +225,11 @@ def render_fijo(cliente, saldo_placeholder, estado_cuenta):
                     else:
                         estado_nuevo = "Saldo a favor"
                         etiqueta_saldo = "Saldo a Favor"
-                
+                    
                     saldo_placeholder.empty()
                     saldo_placeholder.write(f"Estado de Cuenta: **{estado_nuevo}**")
                     saldo_placeholder.write(f"{etiqueta_saldo}: **${abs(nuevo_saldo):.2f}**")
-                
+                    
                 else:
                     st.error("No se pudo registrar el pago.")
 
@@ -254,7 +240,7 @@ def render_fijo(cliente, saldo_placeholder, estado_cuenta):
         if st.button("SUSPENDER SERVICIO"):
             st.warning("Función de suspensión aún no implementada.")
 
-# ========== ESTA FUNCION VA ENCIMA DE cargar_tabla_clientes ==========
+# ========== OBTENER SALDO SEGURO ==========
 def obtener_saldo_seguro(cliente_id):
     try:
         saldo = calcular_saldo(cliente_id)
@@ -263,7 +249,7 @@ def obtener_saldo_seguro(cliente_id):
         print(f"Error obteniendo saldo para {cliente_id}: {e}")
         return 0.0
 
-# ========== ESTA FUNCION VA ENCIMA DE st.title ==========
+# ========== CARGAR TABLA CLIENTES ==========
 def cargar_tabla_clientes():
     """Carga y retorna la tabla de clientes con saldo actualizado"""
     
@@ -310,7 +296,7 @@ def cargar_tabla_clientes():
     df_vista = df[["nombre", "codigo", "tipo_cobro", "Consumo", "Total $", "Saldo"]].copy()
 
     df_vista["Estado Cuenta"] = df_vista["Saldo"].apply(
-        lambda x: "🟢 Al corriente" if x >= 0 else "🟡 Pendiente"
+        lambda x: "🟡 Pendiente" if x > 0 else ("🟢 Al corriente" if x == 0 else "🟢 Saldo a favor")
     )
     
     return df_vista
