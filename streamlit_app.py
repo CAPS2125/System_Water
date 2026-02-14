@@ -167,97 +167,38 @@ def render_medidor(cliente):
 # =========================
 def render_fijo(cliente, saldo_placeholder):
     st.subheader("COBRO TARIFA FIJA")
-
-    # ADEUDO ACTUAL
+    
     saldo_actual = calcular_saldo(cliente["id"])
-    st.write(f"**Adeudo Actual: ${abs(saldo_actual):.2f}**")
+    st.write(f"**Deuda acumulada: ${max(0, saldo_actual):.2f}**")
+
+    fijo_res = supabase.table("fijo").select("tarifa").eq("clientid", cliente["id"]).execute()
+    tarifa = float(fijo_res.data[0]["tarifa"]) if fijo_res.data else 0.0
     
-    # Obtener tarifa
-    fijo_response = (
-        supabase
-        .table("fijo")
-        .select("tarifa")
-        .eq("clientid", cliente["id"])
-        .execute()
-    )
+    st.write(f"Tarifa Mensual: **${tarifa:.2f}**")
 
-    if not fijo_response.data:
-        st.error("No se encontró tarifa fija para este cliente.")
-        return
+    col_a, col_b = st.columns(2)
+    with col_a:
+        pagar_adeudo = st.checkbox("Incluir adeudo anterior", value=saldo_actual > 0)
+    with col_b:
+        meses_adelantados = st.number_input("Meses a pagar", min_value=0, value=1 if saldo_actual <= 0 else 0)
 
-    tarifa = float(fijo_response.data[0]["tarifa"])
-    st.write(f"Tarifa mensual: ${tarifa:.2f}")
+    total_pago = (saldo_actual if pagar_adeudo else 0) + (meses_adelantados * tarifa)
+    st.markdown(f"### Total a Cobrar: `${total_pago:.2f}`")
 
-    # EL USUARIO ELIGE QUÉ PAGAR
-    st.markdown("**¿Qué deseas pagar?**")
-    
-    pagar_adeudo = st.checkbox("Pagar adeudo actual", value=True if saldo_actual > 0 else False)
-    pagar_meses = st.number_input("Meses a pagar (nuevos)", min_value=0, value=1)
+    metodo = st.selectbox("Método", ["Efectivo", "Transferencia"])
 
-    # CALCULAR TOTAL A PAGAR
-    total_a_pagar = 0.0
-    if pagar_adeudo:
-        total_a_pagar += max(0, saldo_actual)
-    total_a_pagar += pagar_meses * tarifa
-
-    st.write(f"**Total a pagar: ${total_a_pagar:.2f}**")
-
-    metodo = st.selectbox(
-        "Método de Pago",
-        ["Efectivo", "Transferencia"]
-    )
-
-    st.divider()
-
-    col1, col2 = st.columns(2)
-
-    with col1:
-        if st.button("GENERAR PAGO"):
-            if total_a_pagar <= 0:
-                st.error("El monto a pagar debe ser mayor a 0")
-                return
-                
-            try:
-                insert_response = (
-                    supabase
-                    .table("pagos")
-                    .insert({
-                        "cargo_generado": 0,
-                        "pago_realizado": total_a_pagar,
-                        "metodo_pago": metodo,
-                        "clientid": cliente["id"]
-                    })
-                    .execute()
-                )
-
-                if insert_response.data:
-                    st.success("Pago registrado correctamente ✅")
-                    
-                    nuevo_saldo = calcular_saldo(cliente["id"])
-                    
-                    if nuevo_saldo > 0:
-                        estado_nuevo = "Pendiente"
-                        etiqueta_saldo = "Adeudo Actual"
-                    elif nuevo_saldo == 0:
-                        estado_nuevo = "Al corriente"
-                        etiqueta_saldo = "Saldo"
-                    else:
-                        estado_nuevo = "Saldo a favor"
-                        etiqueta_saldo = "Saldo a Favor"
-                    
-                    saldo_placeholder.empty()
-                    saldo_placeholder.write(f"Estado de Cuenta: **{estado_nuevo}**")
-                    saldo_placeholder.write(f"{etiqueta_saldo}: **${abs(nuevo_saldo):.2f}**")
-                    
-                else:
-                    st.error("No se pudo registrar el pago.")
-
-            except Exception as e:
-                st.error(f"Error al registrar pago: {e}")
-
-    with col2:
-        if st.button("SUSPENDER SERVICIO"):
-            st.warning("Función de suspensión aún no implementada.")
+    if st.button("REGISTRAR PAGO FIJO"):
+        if total_pago > 0:
+            supabase.table("pagos").insert({
+                "clientid": cliente["id"],
+                "cargo_generado": 0,
+                "pago_realizado": total_pago,
+                "metodo_pago": metodo
+            }).execute()
+            st.success("Pago registrado")
+            st.rerun()
+        else:
+            st.warning("El monto debe ser mayor a 0")
 
 # ========== OBTENER SALDO SEGURO ==========
 def obtener_saldo_seguro(cliente_id):
