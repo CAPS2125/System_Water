@@ -23,26 +23,19 @@ def obtener_cliente(codigo):
     return response.data[0] if response.data else None
 
 def calcular_saldo(cliente_id):
+    """Calcula el saldo neto: Sum(Cargos) - Sum(Pagos)"""
     try:
-        response = (
-            supabase
-            .table("pagos")
-            .select("cargo_generado, pago_realizado")
-            .eq("clientid", cliente_id)
-            .execute()
-        )
-
-        if not response.data:
+        res = supabase.table("pagos").select("cargo_generado, pago_realizado").eq("clientid", cliente_id).execute()
+        if not res.data:
             return 0.0
-
-        total_cargos = sum(p.get("cargo_generado", 0) or 0 for p in response.data)
-        total_pagos = sum(p.get("pago_realizado", 0) or 0 for p in response.data)
-
-        saldo = total_cargos - total_pagos
-        return round(saldo, 2)
-
+        
+        # Usamos una fórmula simple: $$Saldo = \sum Cargos - \sum Pagos$$
+        total_cargos = sum(float(item.get("cargo_generado") or 0) for item in res.data)
+        total_pagos = sum(float(item.get("pago_realizado") or 0) for item in res.data)
+        
+        return round(total_cargos - total_pagos, 2)
     except Exception as e:
-        print("Error en calcular_saldo:", e)
+        print(f"Error en saldo: {e}")
         return 0.0
 
 # ========== GENERA CARGOS MENSUALES ==========
