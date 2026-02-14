@@ -14,6 +14,10 @@ SUPABASE_URL = st.secrets["supabase_url"]
 SUPABASE_KEY = st.secrets["supabase_anon_key"]
 supabase = create_client(SUPABASE_URL, SUPABASE_KEY)
 
+# ======================================================
+# FUNCIONES
+# ======================================================
+
 def obtener_cliente(codigo):
     response = supabase.table("cliente") \
         .select("*") \
@@ -32,11 +36,17 @@ def calcular_saldo(cliente_id):
             .execute()
         )
 
+        print(f"DEBUG - cliente_id: {cliente_id}")
+        print(f"DEBUG - response.data: {response.data}")
+
         if not response.data:
             return 0.0
 
         total_cargos = sum(p.get("cargo_generado", 0) or 0 for p in response.data)
         total_pagos = sum(p.get("pago_realizado", 0) or 0 for p in response.data)
+
+        print(f"DEBUG - total_cargos: {total_cargos}")
+        print(f"DEBUG - total_pagos: {total_pagos}")
 
         saldo = float(total_cargos) - float(total_pagos)
         return round(saldo, 2)
