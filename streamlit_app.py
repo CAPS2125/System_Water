@@ -302,7 +302,7 @@ with col2:
     )
     
     df_vista["Estado Cuenta"] = df_vista["Saldo"].apply(
-        lambda x: "🟢 Sin deuda" if x == 0 else "🟡 Pendiente"
+        lambda x: "🟢 Al corriente" if x <= 0 else "🟡 Pendiente"
     )
     
     st.dataframe(df_vista, use_container_width=True)
