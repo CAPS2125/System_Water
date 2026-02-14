@@ -119,12 +119,11 @@ def render_medidor(cliente):
 # =========================
 # COBRO TARIFA FIJA
 # =========================
-def render_fijo(cliente):
+def render_fijo(cliente, saldo_placeholder, estado_cuenta):
     st.subheader("COBRO TARIFA FIJA")
 
     meses = st.number_input("Meses a pagar", min_value=1, value=1)
 
-    # Obtener tarifa
     fijo_response = (
         supabase
         .table("fijo")
@@ -152,7 +151,6 @@ def render_fijo(cliente):
 
     col1, col2 = st.columns(2)
 
-    # -------- BOTÓN GENERAR PAGO --------
     with col1:
         if st.button("GENERAR PAGO"):
             try:
@@ -161,7 +159,7 @@ def render_fijo(cliente):
                     .table("pagos")
                     .insert({
                         "cargo_generado": cargo,
-                        "pago_realizado": cargo,  # aquí se paga completo
+                        "pago_realizado": cargo,
                         "metodo_pago": metodo,
                         "clientid": cliente["id"]
                     })
@@ -170,17 +168,27 @@ def render_fijo(cliente):
 
                 if insert_response.data:
                     st.success("Pago registrado correctamente ✅")
-
+                    
+                    # AQUÍ: Recalcula y actualiza el saldo sin recargar toda la página
                     saldo_actual = calcular_saldo(cliente["id"])
-                    st.info(f"Saldo actual: ${saldo_actual:.2f}")
-
+                    
+                    if saldo_actual > 0:
+                        estado_nuevo = "Pendiente"
+                    elif saldo_actual == 0:
+                        estado_nuevo = "Al corriente"
+                    else:
+                        estado_nuevo = "Saldo a favor"
+                    
+                    # Actualiza el placeholder
+                    saldo_placeholder.write(f"Estado de Cuenta: **{estado_nuevo}**")
+                    saldo_placeholder.write(f"Adeudo Actual: **${saldo_actual:.2f}**")
+                    
                 else:
                     st.error("No se pudo registrar el pago.")
 
             except Exception as e:
                 st.error(f"Error al registrar pago: {e}")
 
-    # -------- BOTÓN SUSPENDER --------
     with col2:
         if st.button("SUSPENDER SERVICIO"):
             st.warning("Función de suspensión aún no implementada.")
