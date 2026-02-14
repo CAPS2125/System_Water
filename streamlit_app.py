@@ -200,15 +200,25 @@ def render_fijo(cliente, saldo_placeholder, estado_cuenta):
             if total_a_pagar <= 0:
                 st.error("El monto a pagar debe ser mayor a 0")
                 return
-                
+            
             try:
-                # SOLO insertar pago_realizado (cargo_generado ya existe)
+                # Determinar si es pago de deuda o adelanto
+                if saldo_actual < 0:  # Hay deuda
+                    cargo_generado = 0
+                    pago_realizado = total_a_pagar
+                elif saldo_actual > 0:  # Hay saldo a favor (adelanto previo)
+                    cargo_generado = 0
+                    pago_realizado = total_a_pagar
+                else:  # Sin deuda, es adelanto
+                    cargo_generado = -total_a_pagar  # Negativo = adelanto
+                    pago_realizado = 0
+            
                 insert_response = (
                     supabase
                     .table("pagos")
                     .insert({
-                        "cargo_generado": 0,
-                        "pago_realizado": total_a_pagar,
+                        "cargo_generado": cargo_generado,
+                        "pago_realizado": pago_realizado,
                         "metodo_pago": metodo,
                         "clientid": cliente["id"]
                     })
@@ -217,20 +227,23 @@ def render_fijo(cliente, saldo_placeholder, estado_cuenta):
 
                 if insert_response.data:
                     st.success("Pago registrado correctamente ✅")
-                    
+                
                     nuevo_saldo = calcular_saldo(cliente["id"])
-                    
-                    if nuevo_saldo > 0:
+                
+                    if nuevo_saldo < 0:
                         estado_nuevo = "Pendiente"
+                        etiqueta_saldo = "Adeudo Actual"
                     elif nuevo_saldo == 0:
                         estado_nuevo = "Al corriente"
+                        etiqueta_saldo = "Saldo"
                     else:
                         estado_nuevo = "Saldo a favor"
-                    
+                        etiqueta_saldo = "Saldo a Favor"
+                
                     saldo_placeholder.empty()
                     saldo_placeholder.write(f"Estado de Cuenta: **{estado_nuevo}**")
-                    saldo_placeholder.write(f"Adeudo Actual: **${nuevo_saldo:.2f}**")
-                    
+                    saldo_placeholder.write(f"{etiqueta_saldo}: **${abs(nuevo_saldo):.2f}**")
+                
                 else:
                     st.error("No se pudo registrar el pago.")
 
