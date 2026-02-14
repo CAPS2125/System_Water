@@ -122,8 +122,11 @@ def render_medidor(cliente):
 def render_fijo(cliente, saldo_placeholder, estado_cuenta):
     st.subheader("COBRO TARIFA FIJA")
 
-    meses = st.number_input("Meses a pagar", min_value=1, value=1)
-
+    # ADEUDO ACTUAL
+    saldo_actual = calcular_saldo(cliente["id"])
+    st.write(f"**Adeudo Actual: ${saldo_actual:.2f}**")
+    
+    # Obtener tarifa
     fijo_response = (
         supabase
         .table("fijo")
@@ -137,10 +140,21 @@ def render_fijo(cliente, saldo_placeholder, estado_cuenta):
         return
 
     tarifa = float(fijo_response.data[0]["tarifa"])
-    cargo = meses * tarifa
+    st.write(f"Tarifa mensual: ${tarifa:.2f}")
 
-    st.write(f"Tarifa mensual: ${tarifa}")
-    st.write(f"Cargo total: ${cargo:.2f}")
+    # EL USUARIO ELIGE QUÉ PAGAR
+    st.markdown("**¿Qué deseas pagar?**")
+    
+    pagar_adeudo = st.checkbox("Pagar adeudo actual", value=True if saldo_actual > 0 else False)
+    pagar_meses = st.number_input("Meses a pagar (nuevos)", min_value=0, value=1)
+
+    # CALCULAR TOTAL A PAGAR
+    total_a_pagar = 0.0
+    if pagar_adeudo:
+        total_a_pagar += max(0, saldo_actual)  # Solo suma si hay adeudo
+    total_a_pagar += pagar_meses * tarifa
+
+    st.write(f"**Total a pagar: ${total_a_pagar:.2f}**")
 
     metodo = st.selectbox(
         "Método de Pago",
@@ -153,13 +167,17 @@ def render_fijo(cliente, saldo_placeholder, estado_cuenta):
 
     with col1:
         if st.button("GENERAR PAGO"):
+            if total_a_pagar <= 0:
+                st.error("El monto a pagar debe ser mayor a 0")
+                return
+                
             try:
                 insert_response = (
                     supabase
                     .table("pagos")
                     .insert({
-                        "cargo_generado": cargo,
-                        "pago_realizado": cargo,
+                        "cargo_generado": total_a_pagar,
+                        "pago_realizado": total_a_pagar,
                         "metodo_pago": metodo,
                         "clientid": cliente["id"]
                     })
@@ -169,19 +187,19 @@ def render_fijo(cliente, saldo_placeholder, estado_cuenta):
                 if insert_response.data:
                     st.success("Pago registrado correctamente ✅")
                     
-                    # AQUÍ: Recalcula y actualiza el saldo sin recargar toda la página
-                    saldo_actual = calcular_saldo(cliente["id"])
+                    # Recalcula el nuevo saldo
+                    nuevo_saldo = calcular_saldo(cliente["id"])
                     
-                    if saldo_actual > 0:
+                    if nuevo_saldo > 0:
                         estado_nuevo = "Pendiente"
-                    elif saldo_actual == 0:
+                    elif nuevo_saldo == 0:
                         estado_nuevo = "Al corriente"
                     else:
                         estado_nuevo = "Saldo a favor"
                     
-                    # Actualiza el placeholder
+                    saldo_placeholder.empty()
                     saldo_placeholder.write(f"Estado de Cuenta: **{estado_nuevo}**")
-                    saldo_placeholder.write(f"Adeudo Actual: **${saldo_actual:.2f}**")
+                    saldo_placeholder.write(f"Adeudo Actual: **${nuevo_saldo:.2f}**")
                     
                 else:
                     st.error("No se pudo registrar el pago.")
