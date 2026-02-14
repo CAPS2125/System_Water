@@ -210,7 +210,58 @@ def render_fijo(cliente, saldo_placeholder, estado_cuenta):
     with col2:
         if st.button("SUSPENDER SERVICIO"):
             st.warning("Función de suspensión aún no implementada.")
-        
+
+def cargar_tabla_clientes():
+    """Carga y retorna la tabla de clientes con saldo actualizado"""
+    
+    # Clientes
+    clientes_data = supabase.table("cliente").select("*").execute().data
+    df_clientes = pd.DataFrame(clientes_data)
+
+    # Fijo
+    fijo_data = supabase.table("fijo").select("*").execute().data
+    df_fijo = pd.DataFrame(fijo_data)
+
+    # Lectura
+    lectura_data = supabase.table("lectura").select("*").execute().data
+    df_lectura = pd.DataFrame(lectura_data)
+
+    df = df_clientes.merge(
+        df_fijo[["clientid", "tarifa"]],
+        left_on="id",
+        right_on="clientid",
+        how="left"
+    )
+    
+    df = df.merge(
+        df_lectura[["clientid", "precio_m", "lectura_i", "lectura_a"]],
+        left_on="id",
+        right_on="clientid",
+        how="left"
+    )
+
+    df.drop(columns=["clientid"], inplace=True, errors="ignore")
+
+    df["Consumo"] = df["lectura_a"] - df["lectura_i"]
+
+    df["Total $"] = df.apply(
+        lambda row: row["tarifa"] 
+        if row["tipo_cobro"] == "Fijo"
+        else row["Consumo"] * row["precio_m"],
+        axis=1
+    )
+    
+    # AGREGAR SALDO DINAMICO
+    df["Saldo"] = df["id"].apply(lambda cliente_id: calcular_saldo(cliente_id))
+    
+    df_vista = df[["nombre", "codigo", "tipo_cobro", "Consumo", "Total $", "Saldo"]].copy()
+
+    df_vista["Estado Cuenta"] = df_vista["Saldo"].apply(
+        lambda x: "🟢 Al corriente" if x <= 0 else "🟡 Pendiente"
+    )
+    
+    return df_vista
+
 st.title("💧 Sistema de Clientes y Lecturas")
 
 # ======================
@@ -273,15 +324,10 @@ with col1:
             st.success("Cliente creado correctamente")
             st.rerun()
 with col2:
-    # Buscar Clientes - Codigo
     st.subheader("Buscar Cliente")
-
-    # Entrada del codigo
     codigo = st.text_input("Código de Cliente")
 
-    # -----------------------------------------
     if st.button("Buscar Cliente"):
-
         cliente = obtener_cliente(codigo)
 
         if cliente is None:
@@ -291,51 +337,6 @@ with col2:
         
     st.subheader("Tabla de Clientes")
     
-    # Clientes
-    clientes_data = supabase.table("cliente").select("*").execute().data
-    df_clientes = pd.DataFrame(clientes_data)
-
-    # Fijo
-    fijo_data = supabase.table("fijo").select("*").execute().data
-    df_fijo = pd.DataFrame(fijo_data)
-
-    # Lectura
-    lectura_data = supabase.table("lectura").select("*").execute().data
-    df_lectura = pd.DataFrame(lectura_data)
-
-    df = df_clientes.merge(
-        df_fijo[["clientid", "tarifa"]],
-        left_on="id",
-        right_on="clientid",
-        how="left"
-    )
-    
-    df = df.merge(
-        df_lectura[["clientid", "precio_m", "lectura_i", "lectura_a"]],
-        left_on="id",
-        right_on="clientid",
-        how="left"
-    )
-
-    df.drop(columns=["clientid"], inplace=True, errors="ignore")
-
-    df["Consumo"] = df["lectura_a"] - df["lectura_i"]
-
-    df["Total $"] = df.apply(
-        lambda row: row["tarifa"] 
-        if row["tipo_cobro"] == "Fijo"
-        else row["Consumo"] * row["precio_m"],
-        axis=1
-    )
-    
-    df_vista = df[["nombre", "codigo", "tipo_cobro", "Consumo" , "Total $"]].copy()
-
-    df_vista["Saldo"] = df_vista.index.map(
-        lambda idx: calcular_saldo(df["id"].iloc[idx])
-    )
-    
-    df_vista["Estado Cuenta"] = df_vista["Saldo"].apply(
-        lambda x: "🟢 Al corriente" if x <= 0 else "🟡 Pendiente"
-    )
-    
+    # Cargar tabla actualizada
+    df_vista = cargar_tabla_clientes()
     st.dataframe(df_vista, use_container_width=True)
