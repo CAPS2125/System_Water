@@ -170,40 +170,67 @@ def render_medidor(cliente):
 # =========================
 # COBRO TARIFA FIJA
 # =========================
-def render_fijo(cliente, saldo_placeholder):
+def render_fijo(cliente, _):
     st.subheader("COBRO TARIFA FIJA")
-    
     saldo_actual = calcular_saldo(cliente["id"])
-    st.write(f"**Deuda acumulada: ${max(0, saldo_actual):.2f}**")
-
+    
+    # Obtener tarifa fija
     fijo_res = supabase.table("fijo").select("tarifa").eq("clientid", cliente["id"]).execute()
     tarifa = float(fijo_res.data[0]["tarifa"]) if fijo_res.data else 0.0
+
+    # Si el saldo es negativo, no "debe" nada de meses anteriores
+    deuda_real = max(0.0, saldo_actual)
     
-    st.write(f"Tarifa Mensual: **${tarifa:.2f}**")
+    st.write(f"Tarifa mensual: **${tarifa:,.2f}**")
+    if saldo_actual < 0:
+        st.info(f"El cliente tiene **${abs(saldo_actual):,.2f}** a favor.")
 
-    col_a, col_b = st.columns(2)
-    with col_a:
-        pagar_adeudo = st.checkbox("Incluir adeudo anterior", value=saldo_actual > 0)
-    with col_b:
-        meses_adelantados = st.number_input("Meses a pagar", min_value=0, value=1 if saldo_actual <= 0 else 0)
+    # Entrada de datos
+    col1, col2 = st.columns(2)
+    with col1:
+        pagar_deuda = st.checkbox("Pagar adeudo anterior", value=(deuda_real > 0))
+    with col2:
+        meses_a_pagar = st.number_input("Meses adicionales a pagar", min_value=0, value=1 if deuda_real <= 0 else 0)
 
-    total_pago = (saldo_actual if pagar_adeudo else 0) + (meses_adelantados * tarifa)
-    st.markdown(f"### Total a Cobrar: `${total_pago:.2f}`")
+    # Cálculo total
+    monto_deuda = deuda_real if pagar_deuda else 0.0
+    monto_meses = meses_a_pagar * tarifa
+    
+    # IMPORTANTE: Si tiene saldo a favor, restarlo del total a pagar ahora
+    total_a_pagar = (monto_deuda + monto_meses)
+    
+    # Si el cliente ya tiene dinero a favor, el sistema debería descontarlo 
+    # Pero para no complicar, aquí registramos lo que el cliente entrega físicamente hoy
+    st.markdown(f"## Total a recibir: `${total_a_pagar:,.2f}`")
 
-    metodo = st.selectbox("Método", ["Efectivo", "Transferencia"])
-
-    if st.button("REGISTRAR PAGO FIJO"):
-        if total_pago > 0:
-            supabase.table("pagos").insert({
-                "clientid": cliente["id"],
-                "cargo_generado": 0,
-                "pago_realizado": total_pago,
-                "metodo_pago": metodo
-            }).execute()
-            st.success("Pago registrado")
-            st.rerun()
+    if st.button("REGISTRAR PAGO", type="primary"):
+        if total_a_pagar <= 0 and meses_a_pagar == 0:
+            st.error("No hay monto para registrar.")
         else:
-            st.warning("El monto debe ser mayor a 0")
+            # Si el usuario paga meses "adelantados", debemos generar el CARGO y el PAGO
+            # para que el saldo se mantenga neto.
+            try:
+                # 1. Registramos el Cargo de los meses que está pagando
+                if monto_meses > 0:
+                    supabase.table("pagos").insert({
+                        "clientid": cliente["id"],
+                        "cargo_generado": monto_meses,
+                        "pago_realizado": 0,
+                        "metodo_pago": "Cargo Mensual"
+                    }).execute()
+
+                # 2. Registramos el Pago físico que hizo
+                supabase.table("pagos").insert({
+                    "clientid": cliente["id"],
+                    "cargo_generado": 0,
+                    "pago_realizado": total_a_pagar,
+                    "metodo_pago": "Efectivo/Transf"
+                }).execute()
+
+                st.success("Pago procesado correctamente")
+                st.rerun()
+            except Exception as e:
+                st.error(f"Error: {e}")
 
 # ========== OBTENER SALDO SEGURO ==========
 def obtener_saldo_seguro(cliente_id):
