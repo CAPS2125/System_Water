@@ -109,11 +109,19 @@ def dialog_gestion(cliente):
 # =========================
 
 def render_medidor(cliente):
-
     st.subheader("COBRO POR MEDIDOR")
 
-    lectura_anterior = cliente["lectura_actual"]
-    st.write("Lectura Anterior:", lectura_anterior)
+    # Obtener datos de lectura actuales de la DB
+    lectura_res = supabase.table("lectura").select("*").eq("clientid", cliente["id"]).execute()
+    if not lectura_res.data:
+        st.error("No se encontraron datos de lectura para este cliente.")
+        return
+
+    datos_l = lectura_res.data[0]
+    lectura_anterior = datos_l["lectura_a"]
+    precio_m3 = datos_l["precio_m"]
+
+    st.info(f"Lectura Anterior registrada: **{lectura_anterior} m³**")
 
     lectura_actual = st.number_input(
         "Lectura Actual",
@@ -122,26 +130,44 @@ def render_medidor(cliente):
     )
 
     consumo = lectura_actual - lectura_anterior
-    cargo = consumo * cliente["tarifa_m3"]
+    cargo_periodo = consumo * precio_m3
 
-    st.write(f"Consumo: {consumo} m³")
-    st.write(f"Cargo del periodo: ${cargo:.2f}")
+    st.write(f"Consumo del periodo: **{consumo} m³**")
+    st.write(f"Cargo por consumo: **${cargo_periodo:.2f}**")
 
-    metodo = st.selectbox(
-        "Método de Pago",
-        ["Efectivo", "Transferencia"]
-    )
+    metodo = st.selectbox("Método de Pago", ["Efectivo", "Transferencia"])
+    monto_pagado = st.number_input("Monto que entrega el cliente", min_value=0.0, value=float(cargo_periodo))
 
-    st.divider()
+    if st.button("GENERAR PAGO Y ACTUALIZAR LECTURA"):
+        try:
+            # 1. Registrar el cargo generado por el consumo
+            if cargo_periodo > 0:
+                supabase.table("pagos").insert({
+                    "clientid": cliente["id"],
+                    "cargo_generado": cargo_periodo,
+                    "pago_realizado": 0,
+                    "metodo_pago": "Sistema"
+                }).execute()
 
-    col1, col2 = st.columns(2)
+            # 2. Registrar el pago realizado por el cliente
+            if monto_pagado > 0:
+                supabase.table("pagos").insert({
+                    "clientid": cliente["id"],
+                    "cargo_generado": 0,
+                    "pago_realizado": monto_pagado,
+                    "metodo_pago": metodo
+                }).execute()
 
-    with col1:
-        st.button("GENERAR PAGO Y RECIBO PDF (Mock)")
+            # 3. Actualizar la tabla de lecturas para el próximo mes
+            supabase.table("lectura").update({
+                "lectura_i": lectura_anterior,
+                "lectura_a": lectura_actual
+            }).eq("clientid", cliente["id"]).execute()
 
-    with col2:
-        st.button("SUSPENDER SERVICIO (Mock)")
-
+            st.success("Lectura y Pago registrados correctamente ✅")
+            st.rerun()
+        except Exception as e:
+            st.error(f"Error al procesar: {e}")
 
 # =========================
 # COBRO TARIFA FIJA
