@@ -81,12 +81,12 @@ def dialog_gestion(cliente):
     if saldo > 0:
         estado_cuenta = "🔴 Pendiente (Adeudo)"
         color = "red"
-        monto_display = f"${saldo:,.2f}"
+        monto_display = f"${saldo:.2f}"
     elif saldo < 0:
         estado_cuenta = "🔵 Saldo a Favor"
         color = "blue"
         # Mostramos el monto positivo para que sea legible, pero con etiqueta clara
-        monto_display = f"${abs(saldo):,2f}"
+        monto_display = f"${abs(saldo):.2f}"
     else:
         estado_cuenta = "🟢 Al corriente"
         color = "green"
