@@ -297,12 +297,12 @@ with col2:
     
     df_vista = df[["nombre", "codigo", "tipo_cobro", "Consumo" , "Total $"]].copy()
 
-    df_vista["Estado Cuenta"] = df_vista["Total $"].apply(
-        lambda x: "🟢 Sin deuda" if x == 0 else "🟡 Pendiente"
-    )
-
     df_vista["Saldo"] = df_vista.index.map(
         lambda idx: calcular_saldo(df["id"].iloc[idx])
+    )
+    
+    df_vista["Estado Cuenta"] = df_vista["Saldo"].apply(
+        lambda x: "🟢 Sin deuda" if x == 0 else "🟡 Pendiente"
     )
     
     st.dataframe(df_vista, use_container_width=True)
