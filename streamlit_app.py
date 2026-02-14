@@ -51,6 +51,9 @@ def calcular_saldo(cliente_id):
 
 @st.dialog("Gestión de Gastos")
 def dialog_gestion(cliente):
+    # Guardar cliente_id en session_state para usarlo después
+    st.session_state.cliente_id = cliente["id"]
+    
     saldo = calcular_saldo(cliente["id"])
 
     if saldo > 0:
@@ -62,13 +65,17 @@ def dialog_gestion(cliente):
     
     st.markdown(f"### CLIENTE: {cliente['nombre']}")
     st.write(f"Estado del Servicio: **{cliente['estado_servicio']}**")
-    st.write(f"Estado de Cuenta: **{estado_cuenta}**")
-    st.write(f"Adeudo Actual: **${saldo:.2f}**")
+    
+    # Mostrar saldo con placeholder para actualizar dinámicamente
+    saldo_placeholder = st.empty()
+    saldo_placeholder.write(f"Estado de Cuenta: **{estado_cuenta}**")
+    saldo_placeholder.write(f"Adeudo Actual: **${saldo:.2f}**")
+    
     st.divider()
     if cliente["tipo_cobro"] == "Medidor":
         render_medidor(cliente)
     else:
-        render_fijo(cliente)
+        render_fijo(cliente, saldo_placeholder, estado_cuenta)
 
 # =========================
 # COBRO POR MEDIDOR (MOCK)
