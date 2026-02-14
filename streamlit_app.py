@@ -34,7 +34,7 @@ def calcular_saldo(cliente_id):
         # TU LÓGICA: Pagos - Cargos
         # Resultado positivo (+) = Saldo a favor
         # Resultado negativo (-) = Adeudo
-        saldo = total_cargo - total_pagos
+        saldo = total_cargos - total_pagos
         return round(saldo, 2)
     except Exception as e:
         return 0.0
