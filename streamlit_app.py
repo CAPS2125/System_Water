@@ -294,7 +294,7 @@ def cargar_tabla_clientes():
     df_vista = df[["nombre", "codigo", "tipo_cobro", "Consumo", "Total $", "Saldo"]].copy()
 
     df_vista["Estado Cuenta"] = df_vista["Saldo"].apply(
-        lambda x: "🟢 Al corriente" if x <= 0 else "🟡 Pendiente"
+        lambda x: "🟢 Al corriente" if x >= 0 else "🟡 Pendiente"
     )
     
     return df_vista
